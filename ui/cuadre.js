@@ -1,11 +1,7 @@
-import { db } from '../db.js';
+import { db } from '../db.js'; // Usamos el cliente de Supabase
 import { createTable, formatCurrency, showModal, hideModal } from './components.js';
 
-// --- Variable para guardar el estado del reporte actual ---
-let reporteActual = null;
-
 export async function renderDashboard(container) {
-    // ... (El código de renderDashboard no cambia) ...
     container.innerHTML = `
         <div class="page-header">
             <h2>Dashboard General</h2>
@@ -15,12 +11,16 @@ export async function renderDashboard(container) {
     const grid = document.getElementById('dashboard-grid');
 
     try {
+        // --- NOTA IMPORTANTE DE SEGURIDAD ---
+        // Gracias a las políticas de RLS, las siguientes llamadas a la base de datos
+        // ya vienen filtradas. Un usuario 'user' solo recibirá las empresas
+        // y los datos a los que explícitamente tiene permiso. Un 'admin' recibirá todo.
         const { data: empresas } = await db.from('empresas').select('*');
-        const { data: desembolsos } = await db.from('desembolsos').select('empresaId, monto');
-        const { data: rendiciones } = await db.from('rendiciones').select('empresaId, monto');
+        const { data: desembolsos } = await db.from('desembolsos').select('"empresaId", monto');
+        const { data: rendiciones } = await db.from('rendiciones').select('"empresaId", monto');
 
-        if (empresas.length === 0) {
-            grid.innerHTML = '<p>No hay empresas registradas. Comience por agregar una en la sección "Empresas".</p>';
+        if (!empresas || empresas.length === 0) {
+            grid.innerHTML = '<p>No tienes empresas asignadas o no hay empresas registradas.</p>';
             return;
         }
 
@@ -54,11 +54,12 @@ export async function renderDashboard(container) {
 
 
 export async function renderCuadre(container) {
+    // La RLS filtra automáticamente las empresas que el usuario puede ver.
     const { data: empresas } = await db.from('empresas').select('*');
     container.innerHTML = `
         <div class="page-header no-print">
             <h2>Cuadre y Reportes</h2>
-            <button id="print-report-btn" class="btn btn-primary">🖨️ Imprimir Reporte</button>
+            <button id="print-report-btn" class="btn btn-primary" disabled>🖨️ Imprimir Reporte</button>
         </div>
         <div class="filters card no-print">
             <select id="empresa-filter">
@@ -73,15 +74,18 @@ export async function renderCuadre(container) {
             <p>Seleccione una empresa y un rango de fechas para generar el reporte.</p>
         </div>
     `;
-
-    document.getElementById('generate-report').addEventListener('click', generarVistaPreviaReporte);
-    document.getElementById('print-report-btn').addEventListener('click', iniciarProcesoDeImpresion);
+    document.getElementById('generate-report').addEventListener('click', generateReportPreview);
+    document.getElementById('print-report-btn').addEventListener('click', handlePrint);
 }
 
-async function generarVistaPreviaReporte() {
+// Guarda los datos del reporte generado para poder imprimirlo después.
+let currentReportData = null;
+
+async function generateReportPreview() {
     const container = document.getElementById('report-container');
-    container.innerHTML = 'Generando vista previa...';
-    reporteActual = null;
+    container.innerHTML = 'Generando...';
+    document.getElementById('print-report-btn').disabled = true;
+    currentReportData = null;
 
     const empresaId = document.getElementById('empresa-filter').value;
     const startDate = document.getElementById('start-date-filter').value;
@@ -94,94 +98,102 @@ async function generarVistaPreviaReporte() {
 
     try {
         const { data: empresa } = await db.from('empresas').select('*').eq('id', empresaId).single();
-        const { data: desembolsos } = await db.from('desembolsos').select('*').eq('empresaId', empresaId).gte('fecha', startDate || '1900-01-01').lte('fecha', endDate || '2999-12-31');
-        const { data: rendiciones } = await db.from('rendiciones').select('*').eq('empresaId', empresaId).gte('fecha', startDate || '1900-01-01').lte('fecha', endDate || '2999-12-31');
+        
+        let desembolsosQuery = db.from('desembolsos').select('*').eq('"empresaId"', empresaId);
+        let rendicionesQuery = db.from('rendiciones').select('*').eq('"empresaId"', empresaId);
 
-        reporteActual = { empresa, desembolsos, rendiciones, startDate, endDate };
-        renderizarContenidoReporte(container, reporteActual, "(Vista Previa)");
+        if(startDate) {
+            desembolsosQuery = desembolsosQuery.gte('fecha', startDate);
+            rendicionesQuery = rendicionesQuery.gte('fecha', startDate);
+        }
+        if(endDate) {
+            desembolsosQuery = desembolsosQuery.lte('fecha', endDate);
+            rendicionesQuery = rendicionesQuery.lte('fecha', endDate);
+        }
+
+        const { data: desembolsos } = await desembolsosQuery;
+        const { data: rendiciones } = await rendicionesQuery;
+
+        // Guarda los datos para la impresión
+        currentReportData = { empresa, desembolsos, rendiciones, startDate, endDate };
+
+        const reportHtml = generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDate, '(Vista Previa)');
+        container.innerHTML = reportHtml;
+        document.getElementById('print-report-btn').disabled = false;
+
     } catch(error) {
-        console.error("Error al generar vista previa:", error);
-        container.innerHTML = '<p>Error al generar la vista previa del reporte.</p>';
+        console.error("Error al generar reporte:", error);
+        container.innerHTML = '<p>Error al generar el reporte.</p>';
     }
 }
 
-// --- FUNCIÓN MEJORADA: Prepara el reporte para imprimir y pide confirmación después ---
-async function iniciarProcesoDeImpresion() {
-    if (!reporteActual) {
-        alert("Por favor, primero genere una vista previa del reporte.");
+async function handlePrint() {
+    if (!currentReportData) {
+        alert("Primero debe generar una vista previa del reporte.");
         return;
     }
 
+    const { empresa, desembolsos, rendiciones, startDate, endDate } = currentReportData;
+    const container = document.getElementById('report-container');
+
     try {
-        const container = document.getElementById('report-container');
-        container.innerHTML = "Preparando reporte para impresión...";
+        const { data: { session }, error: sessionError } = await db.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!session) throw new Error("Usuario no autenticado.");
+        const currentUser = session.user;
+        
+        // 1. Obtener y actualizar el correlativo
+        // --- CORRECCIÓN FINAL APLICADA AQUÍ ---
+        const { data: perfil, error: perfilError } = await db.from('profiles').select('role').eq('id', currentUser.id).single();
+        if (perfilError) throw perfilError;
+        
+        const { data: empresaData, error: empresaError } = await db.from('empresas').select('correlativo_reporte, prefijo_reporte').eq('id', empresa.id).single();
+        if (empresaError) throw empresaError;
+        
+        const nuevoCorrelativo = (empresaData.correlativo_reporte || 0) + 1;
+        const anio = new Date().getFullYear();
+        const correlativoFormateado = `${empresaData.prefijo_reporte || 'REP'}-${anio}-${String(nuevoCorrelativo).padStart(3, '0')}`;
+        
+        // 2. Actualizar el HTML con el correlativo final
+        container.innerHTML = generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDate, correlativoFormateado);
 
-        const { data: empresaDB } = await db.from('empresas').select('correlativo_reporte, prefijo_reporte').eq('id', reporteActual.empresa.id).single();
-        
-        const nuevoCorrelativoNum = (empresaDB.correlativo_reporte || 0) + 1;
-        const anioActual = new Date().getFullYear();
-        const prefijo = empresaDB.prefijo_reporte || 'REP';
-        const numeroFormateado = String(nuevoCorrelativoNum).padStart(3, '0');
-        const correlativoOficial = `${prefijo}-${anioActual}-${numeroFormateado}`;
-        
-        renderizarContenidoReporte(container, reporteActual, `N°: ${correlativoOficial}`);
-        
-        // --- LÓGICA DE CONFIRMACIÓN POST-IMPRESIÓN ---
-        const handleAfterPrint = () => {
-            window.removeEventListener('afterprint', handleAfterPrint);
-            mostrarModalConfirmacion(reporteActual.empresa.id, nuevoCorrelativoNum, correlativoOficial);
-        };
+        // 3. Abrir diálogo de impresión
+        setTimeout(() => {
+            window.print();
+            
+            // 4. Mostrar confirmación DESPUÉS de imprimir
+            setTimeout(() => {
+                showModal('Confirmar Impresión', `
+                    <p>¿Se imprimió el reporte con el correlativo <strong>${correlativoFormateado}</strong> correctamente?</p>
+                    <p>Solo si la impresión fue exitosa, el número se guardará en la base de datos.</p>
+                    <div class="form-actions">
+                        <button id="confirm-print-no" class="btn btn-secondary">No, Cancelar</button>
+                        <button id="confirm-print-yes" class="btn btn-primary">Sí, Archivar</button>
+                    </div>
+                `);
 
-        window.addEventListener('afterprint', handleAfterPrint);
-        
-        // El timeout asegura que el DOM se actualice antes de llamar a print()
-        setTimeout(() => window.print(), 100);
+                document.getElementById('confirm-print-yes').onclick = async () => {
+                    await db.from('empresas').update({ correlativo_reporte: nuevoCorrelativo }).eq('id', empresa.id);
+                    alert(`Reporte ${correlativoFormateado} archivado correctamente.`);
+                    hideModal();
+                };
+                document.getElementById('confirm-print-no').onclick = () => {
+                     // Al cancelar, volvemos a mostrar la vista previa sin el correlativo
+                    container.innerHTML = generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDate, '(Vista Previa)');
+                    hideModal();
+                };
+
+            }, 500); // Pequeña espera para que el diálogo de impresión no bloquee la alerta
+        }, 100);
 
     } catch (error) {
-        console.error("Error al preparar la impresión:", error);
-        document.getElementById('report-container').innerHTML = `<p>Error al preparar la impresión. Verifique la conexión.</p>`;
+        console.error("Error al procesar la impresión:", error);
+        alert("Error al procesar la impresión: " + error.message);
     }
 }
 
-// --- NUEVA FUNCIÓN: Muestra un modal para confirmar el archivado del correlativo ---
-function mostrarModalConfirmacion(empresaId, correlativoAGuardar, correlativoTexto) {
-    const modalContent = `
-        <h4>Confirmar Impresión</h4>
-        <p>¿El reporte con el correlativo <strong>${correlativoTexto}</strong> se imprimió correctamente?</p>
-        <p>Solo al confirmar se guardará este número de forma permanente.</p>
-        <div class="form-actions" style="justify-content: center;">
-            <button id="cancel-archive-btn" class="btn btn-secondary">No, Cancelar</button>
-            <button id="confirm-archive-btn" class="btn btn-primary">Sí, Archivar Correlativo</button>
-        </div>
-    `;
-    showModal("Confirmación Requerida", modalContent);
 
-    document.getElementById('confirm-archive-btn').onclick = async () => {
-        const modalBody = document.getElementById('modal-body');
-        modalBody.innerHTML = '<h2>Archivando, por favor espere...</h2>';
-        
-        const { error } = await db.from('empresas')
-            .update({ correlativo_reporte: correlativoAGuardar })
-            .eq('id', empresaId);
-
-        if (error) {
-            modalBody.innerHTML = `<h2>Error al archivar</h2><p>${error.message}</p><button onclick="hideModal()" class="btn">Cerrar</button>`;
-        } else {
-            modalBody.innerHTML = '<h2>¡Correlativo archivado con éxito!</h2>';
-            setTimeout(hideModal, 2000);
-        }
-    };
-
-    document.getElementById('cancel-archive-btn').onclick = () => {
-        hideModal();
-        alert(`El correlativo ${correlativoTexto} no fue guardado. Puede volver a imprimir para usarlo.`);
-    };
-}
-
-
-function renderizarContenidoReporte(container, datosReporte, correlativoTexto) {
-    const { empresa, desembolsos, rendiciones, startDate, endDate } = datosReporte;
-
+function generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDate, correlativo) {
     const totalDesembolsado = desembolsos.reduce((sum, d) => sum + d.monto, 0);
     const totalRendido = rendiciones.reduce((sum, r) => sum + r.monto, 0);
     const diferencia = totalDesembolsado - totalRendido;
@@ -192,11 +204,11 @@ function renderizarContenidoReporte(container, datosReporte, correlativoTexto) {
     const rendicionesHeaders = ['Fecha', 'Proveedor', 'Documento', 'Monto'];
     const rendicionesRows = rendiciones.map(r => [new Date(r.fecha).toLocaleDateString(), r.proveedor, `${r.documento.tipo} ${r.documento.numero}`, formatCurrency(r.monto)]);
 
-    container.innerHTML = `
+    return `
         <div class="print-header">
             <img src="assets/logo.png" alt="Logo" style="height: 60px;">
             <div>
-                <h1>Reporte de Caja Chica ${correlativoTexto}</h1>
+                <h1>Reporte de Caja Chica <span class="correlativo-display">${correlativo}</span></h1>
                 <p><strong>Empresa:</strong> ${empresa.nombre}</p>
                 <p><strong>Periodo:</strong> ${startDate || 'Inicio'} al ${endDate || 'Fin'}</p>
                 <p><strong>Fecha de Reporte:</strong> ${new Date().toLocaleDateString()}</p>
