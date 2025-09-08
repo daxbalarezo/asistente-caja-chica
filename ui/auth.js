@@ -1,11 +1,9 @@
-// ui/auth.js (Versión de Depuración)
+// ui/auth.js (Versión Final)
 
 import { db } from '../db.js';
 
+// Función para mostrar el formulario de Login/Registro
 export function renderAuth(container) {
-    // --- MENSAJE DE PRUEBA 1 ---
-    console.log("Paso 1: La función renderAuth SÍ se está ejecutando.");
-
     container.innerHTML = `
         <div class="auth-container card">
             <h2>Iniciar Sesión / Registrarse</h2>
@@ -39,10 +37,6 @@ export function renderAuth(container) {
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        // --- MENSAJE DE PRUEBA 2 ---
-        console.log("Paso 2: El formulario SÍ detectó el 'submit'.");
-
         errorDiv.textContent = '';
         
         const { error } = await db.auth.signInWithPassword({
@@ -54,8 +48,9 @@ export function renderAuth(container) {
             errorDiv.textContent = 'Email o contraseña incorrectos.';
             console.error('Error de inicio de sesión:', error.message);
         } else {
-            window.location.hash = '/';
-            window.location.reload();
+            // --- ESTE ES EL CAMBIO CLAVE ---
+            // Simplemente cambiamos el hash. El router en app.js se encargará del resto.
+            window.location.hash = '/'; 
         }
     });
 
@@ -66,6 +61,7 @@ export function renderAuth(container) {
                 email: emailInput.value,
                 password: passwordInput.value,
             });
+
             if (error) {
                 errorDiv.textContent = 'Error: ' + error.message;
             } else {
@@ -79,5 +75,5 @@ export function renderAuth(container) {
 export async function handleLogout() {
     await db.auth.signOut();
     window.location.hash = '#auth';
-    window.location.reload();
+    window.location.reload(); // Aquí sí es útil recargar para limpiar todo.
 }
