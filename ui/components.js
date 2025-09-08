@@ -1,3 +1,5 @@
+// --- Componentes de Formulario y UI Reutilizables ---
+
 export function showModal(title, content) {
     const modalContainer = document.getElementById('modal-container');
     const modalBody = document.getElementById('modal-body');
@@ -7,6 +9,8 @@ export function showModal(title, content) {
 
     const closeBtn = modalContainer.querySelector('.modal-close-btn');
     closeBtn.onclick = () => hideModal();
+
+    // El código que cerraba el modal al hacer clic afuera ha sido eliminado.
 }
 
 export function hideModal() {
@@ -17,9 +21,8 @@ export function hideModal() {
 
 export function createTable(headers, dataRows) {
     const headerHtml = headers.map(h => `<th>${h}</th>`).join('');
-    // La modificación clave está en la siguiente línea para añadir "data-label"
     const bodyHtml = dataRows.length > 0
-        ? dataRows.map(row => `<tr>${row.map((cell, index) => `<td data-label="${headers[index]}">${cell}</td>`).join('')}</tr>`).join('')
+        ? dataRows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')
         : `<tr><td colspan="${headers.length}" style="text-align:center;">No hay datos para mostrar.</td></tr>`;
 
     return `
@@ -36,6 +39,7 @@ export function createTable(headers, dataRows) {
     `;
 }
 
+// Utilidad para formatear moneda
 export const formatCurrency = (amount, currency = 'PEN') => {
     return new Intl.NumberFormat('es-PE', { style: 'currency', currency }).format(amount);
 };
