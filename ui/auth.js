@@ -1,9 +1,11 @@
-// ui/auth.js (Versión Corregida)
+// ui/auth.js (Versión de Depuración)
 
 import { db } from '../db.js';
 
-// Función para mostrar el formulario de Login/Registro
 export function renderAuth(container) {
+    // --- MENSAJE DE PRUEBA 1 ---
+    console.log("Paso 1: La función renderAuth SÍ se está ejecutando.");
+
     container.innerHTML = `
         <div class="auth-container card">
             <h2>Iniciar Sesión / Registrarse</h2>
@@ -35,9 +37,12 @@ export function renderAuth(container) {
     const passwordInput = document.getElementById('password');
     const errorDiv = document.getElementById('auth-error');
 
-    // --- CAMBIO IMPORTANTE: Escuchamos el evento 'submit' del formulario ---
     form.addEventListener('submit', async (e) => {
-        e.preventDefault(); // Prevenimos la recarga de la página
+        e.preventDefault();
+        
+        // --- MENSAJE DE PRUEBA 2 ---
+        console.log("Paso 2: El formulario SÍ detectó el 'submit'.");
+
         errorDiv.textContent = '';
         
         const { error } = await db.auth.signInWithPassword({
@@ -46,15 +51,14 @@ export function renderAuth(container) {
         });
 
         if (error) {
-            errorDiv.textContent = 'Email o contraseña incorrectos.'; // Mensaje más amigable
+            errorDiv.textContent = 'Email o contraseña incorrectos.';
             console.error('Error de inicio de sesión:', error.message);
         } else {
-            window.location.hash = '/'; // Redirige al dashboard
-            window.location.reload(); // Recarga para que el router nos lleve
+            window.location.hash = '/';
+            window.location.reload();
         }
     });
 
-    // El botón de registro sigue funcionando con un 'click' porque no es de tipo 'submit'
     registerBtn.addEventListener('click', async () => {
         errorDiv.textContent = '';
         if (confirm('¿Seguro que quieres registrar este nuevo usuario?')) {
@@ -62,7 +66,6 @@ export function renderAuth(container) {
                 email: emailInput.value,
                 password: passwordInput.value,
             });
-
             if (error) {
                 errorDiv.textContent = 'Error: ' + error.message;
             } else {
