@@ -27,7 +27,10 @@ db.auth.onAuthStateChange((event, session) => {
 
 async function router() {
     // --- LÓGICA DEL ROUTER MEJORADA ---
-    const path = window.location.hash.slice(1) || '/'; // Obtenemos la ruta sin el '#'
+    let path = window.location.hash.slice(1); // Obtenemos la ruta, ej: "/rendiciones" o "auth"
+    if (path.startsWith('/')) {
+        path = path.slice(1); // Le quitamos la barra inicial para que quede "rendiciones"
+    }
     
     // Si no hay usuario y no estamos en la página de login, redirigir
     if (!currentUser && path !== 'auth') {
@@ -41,8 +44,9 @@ async function router() {
         return;
     }
 
-    // Buscamos la función que renderiza la vista
-    const viewRenderer = routes[path] || routes['/'];
+    // Si la ruta está vacía, es el dashboard
+    const routeKey = path === '' ? '/' : path;
+    const viewRenderer = routes[routeKey] || routes['/'];
     
     try {
         appRoot.innerHTML = '<h2>Cargando...</h2>';
@@ -62,7 +66,6 @@ function updateUI(user) {
         nav.style.display = 'flex';
         settings.style.display = 'flex';
 
-        // Añadimos o removemos el botón de Logout según sea necesario
         let logoutBtn = document.getElementById('logout-btn');
         if (!logoutBtn) {
             logoutBtn = document.createElement('button');
@@ -71,12 +74,27 @@ function updateUI(user) {
             logoutBtn.className = 'btn btn-danger';
             settings.appendChild(logoutBtn);
         }
-        logoutBtn.onclick = handleLogout; // Nos aseguramos de que el evento esté siempre asignado
+        logoutBtn.onclick = handleLogout;
 
-        const currentPath = window.location.hash.slice(1) || '/';
+        // Corregimos también cómo se detecta la ruta activa
+        let currentPath = window.location.hash.slice(1);
+        if (currentPath.startsWith('/')) {
+            currentPath = currentPath.slice(1);
+        }
+        
         document.querySelectorAll('nav a').forEach(a => {
-            const linkPath = a.getAttribute('href').slice(1);
-            a.classList.toggle('active', linkPath === currentPath);
+            let linkPath = a.getAttribute('href').slice(1);
+            if (linkPath.startsWith('/')) {
+                linkPath = linkPath.slice(1);
+            }
+            // El dashboard es un caso especial
+            if (linkPath === '' && (currentPath === '' || currentPath === '/')) {
+                 a.classList.add('active');
+            } else if (linkPath !== '' && linkPath === currentPath) {
+                 a.classList.add('active');
+            } else {
+                 a.classList.remove('active');
+            }
         });
 
     } else {
@@ -87,5 +105,4 @@ function updateUI(user) {
     }
 }
 
-// Event Listeners
 window.addEventListener('hashchange', router);
