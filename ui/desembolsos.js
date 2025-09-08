@@ -1,11 +1,12 @@
-import * as db from '../db.js';
-import { createDesembolso } from '../models.js';
+import { db } from '../db.js';
 import { showModal, hideModal, createTable, formatCurrency } from './components.js';
 
-const STORE_NAME = 'desembolsos';
+const TABLE_NAME = 'desembolsos';
 
 export async function renderDesembolsos(container) {
-    const empresas = await db.getAll('empresas');
+    const { data: empresas, error } = await db.from('empresas').select('id, nombre');
+    if (error) console.error("Error cargando empresas para el filtro:", error);
+
     container.innerHTML = `
         <div class="page-header">
             <h2>Registro de Desembolsos</h2>
@@ -33,96 +34,94 @@ async function loadDesembolsosTable() {
     const listContainer = document.getElementById('desembolsos-list');
     listContainer.innerHTML = 'Cargando...';
 
+    // Construimos la consulta a Supabase
+    let query = db.from(TABLE_NAME).select(`
+        *,
+        empresas ( nombre )
+    `).order('fecha', { ascending: false });
+
+    // Aplicar filtros
     const empresaFilter = document.getElementById('empresa-filter').value;
     const startDateFilter = document.getElementById('start-date-filter').value;
     const endDateFilter = document.getElementById('end-date-filter').value;
 
-    try {
-        let desembolsos = await db.getAll(STORE_NAME);
-        const empresas = await db.getAll('empresas');
-        const empresaMap = new Map(empresas.map(e => [e.id, e.nombre]));
+    if (empresaFilter) query = query.eq('empresaId', empresaFilter);
+    if (startDateFilter) query = query.gte('fecha', startDateFilter);
+    if (endDateFilter) query = query.lte('fecha', endDateFilter);
+    
+    const { data: desembolsos, error } = await query;
 
-        // Aplicar filtros
-        if (empresaFilter) {
-            desembolsos = desembolsos.filter(d => d.empresaId === empresaFilter);
-        }
-        if (startDateFilter) {
-            desembolsos = desembolsos.filter(d => d.fecha >= startDateFilter);
-        }
-        if (endDateFilter) {
-            desembolsos = desembolsos.filter(d => d.fecha <= endDateFilter);
-        }
-        
-        desembolsos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-
-        const headers = ['Fecha', 'Empresa', 'Responsable', 'Monto', 'Descripción', 'Captura', 'Acciones'];
-        const dataRows = desembolsos.map(d => [
-            new Date(d.fecha).toLocaleDateString(),
-            empresaMap.get(d.empresaId) || 'N/A',
-            d.responsable,
-            formatCurrency(d.monto, d.moneda),
-            d.descripcion,
-            d.imagenDataUrl 
-                ? `<a href="${d.imagenDataUrl}" download="desembolso-${d.fecha}.png" class="btn btn-secondary btn-sm">Descargar</a>` 
-                : 'No hay',
-            `<div class="actions">
-                <button class="btn btn-secondary btn-sm edit-btn" data-id="${d.id}">✏️</button>
-                <button class="btn btn-danger btn-sm delete-btn" data-id="${d.id}">🗑️</button>
-            </div>`
-        ]);
-
-        listContainer.innerHTML = createTable(headers, dataRows);
-
-        listContainer.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const desembolso = await db.getById(STORE_NAME, e.currentTarget.dataset.id);
-                showDesembolsoForm(desembolso);
-            });
-        });
-
-        listContainer.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                if (confirm('¿Eliminar este desembolso?')) {
-                    await db.remove(STORE_NAME, e.currentTarget.dataset.id);
-                    await loadDesembolsosTable();
-                }
-            });
-        });
-
-    } catch (error) {
+    if (error) {
         console.error("Error al cargar desembolsos:", error);
-        listContainer.innerHTML = "<p>Error al cargar desembolsos.</p>";
+        listContainer.innerHTML = "<p>Error al cargar desembolsos desde la nube.</p>";
+        return;
     }
+
+    const headers = ['Fecha', 'Empresa', 'Responsable', 'Monto', 'Descripción', 'Captura', 'Acciones'];
+    const dataRows = desembolsos.map(d => [
+        new Date(d.fecha).toLocaleDateString(),
+        d.empresas.nombre || 'N/A',
+        d.responsable,
+        formatCurrency(d.monto, d.moneda),
+        d.descripcion,
+        d.imagenDataUrl 
+            ? `<a href="${d.imagenDataUrl}" download="desembolso-${d.fecha}.png" class="btn btn-secondary btn-sm">Descargar</a>` 
+            : 'No hay',
+        `<div class="actions">
+            <button class="btn btn-secondary btn-sm edit-btn" data-id="${d.id}">✏️</button>
+            <button class="btn btn-danger btn-sm delete-btn" data-id="${d.id}">🗑️</button>
+        </div>`
+    ]);
+
+    listContainer.innerHTML = createTable(headers, dataRows);
+
+    listContainer.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = e.currentTarget.dataset.id;
+            const { data: desembolso } = await db.from(TABLE_NAME).select('*').eq('id', id).single();
+            showDesembolsoForm(desembolso);
+        });
+    });
+
+    listContainer.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            if (confirm('¿Eliminar este desembolso?')) {
+                await db.from(TABLE_NAME).delete().eq('id', e.currentTarget.dataset.id);
+                await loadDesembolsosTable();
+            }
+        });
+    });
 }
 
 async function showDesembolsoForm(desembolso = null) {
     const isEditing = !!desembolso;
-    const empresas = await db.getAll('empresas');
+    const { data: empresas } = await db.from('empresas').select('id, nombre');
+    
     const formContent = `
         <form id="desembolso-form">
             <input type="hidden" name="id" value="${desembolso?.id || ''}">
             <div class="form-grid">
                 <div class="form-group">
                     <label for="fecha">Fecha</label>
-                    <input type="date" id="fecha" name="fecha" value="${desembolso?.fecha || new Date().toISOString().slice(0,10)}" required>
+                    <input type="date" name="fecha" value="${desembolso?.fecha || new Date().toISOString().slice(0,10)}" required>
                 </div>
                 <div class="form-group">
                     <label for="empresaId">Empresa</label>
-                    <select id="empresaId" name="empresaId" required>
+                    <select name="empresaId" required>
                         ${empresas.map(e => `<option value="${e.id}" ${desembolso?.empresaId === e.id ? 'selected' : ''}>${e.nombre}</option>`).join('')}
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="responsable">Responsable</label>
-                    <input type="text" id="responsable" name="responsable" value="${desembolso?.responsable || ''}" required>
+                    <input type="text" name="responsable" value="${desembolso?.responsable || ''}" required>
                 </div>
                 <div class="form-group">
                     <label for="monto">Monto</label>
-                    <input type="number" id="monto" name="monto" step="0.01" min="0.01" value="${desembolso?.monto || ''}" required>
+                    <input type="number" name="monto" step="0.01" min="0.01" value="${desembolso?.monto || ''}" required>
                 </div>
                 <div class="form-group">
                     <label for="medioPago">Medio de Pago</label>
-                    <select id="medioPago" name="medioPago">
+                    <select name="medioPago">
                         <option value="efectivo" ${desembolso?.medioPago === 'efectivo' ? 'selected' : ''}>Efectivo</option>
                         <option value="transferencia" ${desembolso?.medioPago === 'transferencia' ? 'selected' : ''}>Transferencia</option>
                         <option value="otro" ${desembolso?.medioPago === 'otro' ? 'selected' : ''}>Otro</option>
@@ -130,7 +129,7 @@ async function showDesembolsoForm(desembolso = null) {
                 </div>
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label for="descripcion">Descripción</label>
-                    <textarea id="descripcion" name="descripcion">${desembolso?.descripcion || ''}</textarea>
+                    <textarea name="descripcion">${desembolso?.descripcion || ''}</textarea>
                 </div>
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label for="imagen">Captura del Desembolso (Opcional)</label>
@@ -149,16 +148,15 @@ async function showDesembolsoForm(desembolso = null) {
         e.preventDefault();
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData.entries());
+        delete data.imagen;
+        
         const fileInput = document.getElementById('imagen');
-
-        const readFileAsDataURL = (file) => {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = (error) => reject(error);
-                reader.readAsDataURL(file);
-            });
-        };
+        const readFileAsDataURL = (file) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+        });
 
         try {
             if (fileInput.files.length > 0) {
@@ -166,19 +164,18 @@ async function showDesembolsoForm(desembolso = null) {
             }
 
             if (data.id) {
-                const existing = await db.getById(STORE_NAME, data.id);
-                if (!data.imagenDataUrl) {
-                    data.imagenDataUrl = existing.imagenDataUrl;
-                }
-                await db.put(STORE_NAME, { ...existing, ...data, monto: parseFloat(data.monto) });
+                const id = data.id;
+                delete data.id;
+                await db.from(TABLE_NAME).update(data).eq('id', id);
             } else {
-                await db.add(STORE_NAME, createDesembolso(data));
+                delete data.id;
+                await db.from(TABLE_NAME).insert(data);
             }
             hideModal();
             await loadDesembolsosTable();
         } catch (error) {
             console.error("Error al guardar desembolso:", error);
-            alert(error.message);
+            alert("Error al guardar el desembolso.");
         }
     });
 }

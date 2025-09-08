@@ -1,11 +1,11 @@
-import * as db from '../db.js';
-import { createRendicion } from '../models.js';
+import { db } from '../db.js';
 import { showModal, hideModal, createTable, formatCurrency } from './components.js';
 
-const STORE_NAME = 'rendiciones';
+const TABLE_NAME = 'rendiciones';
 
 export async function renderRendiciones(container) {
-    const empresas = await db.getAll('empresas');
+    const { data: empresas } = await db.from('empresas').select('id, nombre');
+
     container.innerHTML = `
         <div class="page-header">
             <h2>Registro de Rendiciones</h2>
@@ -33,65 +33,67 @@ async function loadRendicionesTable() {
     const listContainer = document.getElementById('rendiciones-list');
     listContainer.innerHTML = 'Cargando...';
 
+    let query = db.from(TABLE_NAME).select(`
+        *,
+        empresas ( nombre )
+    `).order('fecha', { ascending: false });
+
+    // Aplicar filtros
     const empresaFilter = document.getElementById('empresa-filter').value;
     const startDateFilter = document.getElementById('start-date-filter').value;
     const endDateFilter = document.getElementById('end-date-filter').value;
 
-    try {
-        let rendiciones = await db.getAll(STORE_NAME);
-        const empresas = await db.getAll('empresas');
-        const empresaMap = new Map(empresas.map(e => [e.id, e.nombre]));
+    if (empresaFilter) query = query.eq('empresaId', empresaFilter);
+    if (startDateFilter) query = query.gte('fecha', startDateFilter);
+    if (endDateFilter) query = query.lte('fecha', endDateFilter);
 
-        // Filtros
-        if (empresaFilter) rendiciones = rendiciones.filter(r => r.empresaId === empresaFilter);
-        if (startDateFilter) rendiciones = rendiciones.filter(r => r.fecha >= startDateFilter);
-        if (endDateFilter) rendiciones = rendiciones.filter(r => r.fecha <= endDateFilter);
-        
-        rendiciones.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    const { data: rendiciones, error } = await query;
 
-        const headers = ['Fecha', 'Empresa', 'Proveedor', 'Documento', 'Monto', 'Imagen', 'Acciones'];
-        const dataRows = rendiciones.map(r => [
-            new Date(r.fecha).toLocaleDateString(),
-            empresaMap.get(r.empresaId) || 'N/A',
-            r.proveedor,
-            `${r.documento.tipo} ${r.documento.numero}`,
-            formatCurrency(r.monto),
-            r.imagenDataUrl
-                ? `<a href="${r.imagenDataUrl}" download="rendicion-${r.fecha}.png" class="btn btn-secondary btn-sm">Descargar</a>`
-                : 'No hay',
-            `<div class="actions">
-                <button class="btn btn-secondary btn-sm edit-btn" data-id="${r.id}">✏️</button>
-                <button class="btn btn-danger btn-sm delete-btn" data-id="${r.id}">🗑️</button>
-            </div>`
-        ]);
-
-        listContainer.innerHTML = createTable(headers, dataRows);
-
-        listContainer.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', async e => {
-                const rendicion = await db.getById(STORE_NAME, e.currentTarget.dataset.id);
-                showRendicionForm(rendicion);
-            });
-        });
-
-        listContainer.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', async e => {
-                if (confirm('¿Eliminar esta rendición?')) {
-                    await db.remove(STORE_NAME, e.currentTarget.dataset.id);
-                    await loadRendicionesTable();
-                }
-            });
-        });
-
-    } catch (error) {
+    if (error) {
         console.error("Error al cargar rendiciones:", error);
-        listContainer.innerHTML = "<p>Error al cargar rendiciones.</p>";
+        listContainer.innerHTML = "<p>Error al cargar rendiciones desde la nube.</p>";
+        return;
     }
+    
+    const headers = ['Fecha', 'Empresa', 'Proveedor', 'Documento', 'Monto', 'Imagen', 'Acciones'];
+    const dataRows = rendiciones.map(r => [
+        new Date(r.fecha).toLocaleDateString(),
+        r.empresas.nombre || 'N/A',
+        r.proveedor,
+        `${r.documento.tipo} ${r.documento.numero}`,
+        formatCurrency(r.monto),
+        r.imagenDataUrl
+            ? `<a href="${r.imagenDataUrl}" download="rendicion-${r.fecha}.png" class="btn btn-secondary btn-sm">Descargar</a>`
+            : 'No hay',
+        `<div class="actions">
+            <button class="btn btn-secondary btn-sm edit-btn" data-id="${r.id}">✏️</button>
+            <button class="btn btn-danger btn-sm delete-btn" data-id="${r.id}">🗑️</button>
+        </div>`
+    ]);
+
+    listContainer.innerHTML = createTable(headers, dataRows);
+
+    listContainer.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', async e => {
+            const id = e.currentTarget.dataset.id;
+            const { data: rendicion } = await db.from(TABLE_NAME).select('*').eq('id', id).single();
+            showRendicionForm(rendicion);
+        });
+    });
+
+    listContainer.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async e => {
+            if (confirm('¿Eliminar esta rendición?')) {
+                await db.from(TABLE_NAME).delete().eq('id', e.currentTarget.dataset.id);
+                await loadRendicionesTable();
+            }
+        });
+    });
 }
 
 async function showRendicionForm(rendicion = null) {
     const isEditing = !!rendicion;
-    const empresas = await db.getAll('empresas');
+    const { data: empresas } = await db.from('empresas').select('id, nombre');
 
     const formContent = `
         <form id="rendicion-form">
@@ -146,8 +148,8 @@ async function showRendicionForm(rendicion = null) {
     document.getElementById('rendicion-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
+        
         const data = {
-            id: formData.get('id'),
             empresaId: formData.get('empresaId'),
             fecha: formData.get('fecha'),
             proveedor: formData.get('proveedor'),
@@ -156,37 +158,33 @@ async function showRendicionForm(rendicion = null) {
                 numero: formData.get('documento-numero')
             },
             monto: formData.get('monto'),
-            categoria: formData.get('categoria')
+            categoria: formData.get('categoria'),
         };
-        const fileInput = document.getElementById('imagen');
+        const id = formData.get('id');
         
-        const readFileAsDataURL = (file) => {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = (error) => reject(error);
-                reader.readAsDataURL(file);
-            });
-        };
+        const fileInput = document.getElementById('imagen');
+        const readFileAsDataURL = (file) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+        });
         
         try {
             if (fileInput.files.length > 0) {
                 data.imagenDataUrl = await readFileAsDataURL(fileInput.files[0]);
             }
 
-            if (data.id) {
-                const existing = await db.getById(STORE_NAME, data.id);
-                if (!data.imagenDataUrl) {
-                    data.imagenDataUrl = existing.imagenDataUrl;
-                }
-                await db.put(STORE_NAME, { ...existing, ...data, monto: parseFloat(data.monto) });
+            if (id) {
+                await db.from(TABLE_NAME).update(data).eq('id', id);
             } else {
-                await db.add(STORE_NAME, createRendicion(data));
+                await db.from(TABLE_NAME).insert(data);
             }
             hideModal();
             await loadRendicionesTable();
         } catch (error) {
-            alert(error.message);
+            console.error("Error al guardar rendición:", error);
+            alert("Error al guardar la rendición.");
         }
     });
 }
