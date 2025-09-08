@@ -1,5 +1,8 @@
-// En ui/auth.js, reemplaza solo la función renderAuth
+// ui/auth.js (Versión Final y Completa)
 
+import { db } from '../db.js';
+
+// Función para mostrar el formulario de Login/Registro
 export function renderAuth(container) {
     container.innerHTML = `
         <div class="auth-container card">
@@ -36,24 +39,18 @@ export function renderAuth(container) {
         e.preventDefault();
         errorDiv.textContent = '';
         
-        // Hacemos el llamado a Supabase
-        const { data, error } = await db.auth.signInWithPassword({
+        const { error } = await db.auth.signInWithPassword({
             email: emailInput.value,
             password: passwordInput.value,
         });
-
-        // --- PUNTO DE PAUSA ---
-        // El navegador se detendrá aquí para que podamos inspeccionar
-        debugger; 
 
         if (error) {
             errorDiv.textContent = 'Email o contraseña incorrectos.';
             console.error('Error de inicio de sesión:', error.message);
         }
-        // ... el resto del código ...
+        // Ya no hacemos nada aquí. El listener 'onAuthStateChange' en app.js se encargará de la redirección.
     });
 
-    // ... el resto de la función (botón de registro) se queda igual ...
     registerBtn.addEventListener('click', async () => {
         errorDiv.textContent = '';
         if (confirm('¿Seguro que quieres registrar este nuevo usuario?')) {
@@ -68,4 +65,10 @@ export function renderAuth(container) {
             }
         }
     });
+}
+
+// Función para cerrar sesión que se llama desde app.js
+export async function handleLogout() {
+    await db.auth.signOut();
+    // El listener 'onAuthStateChange' en app.js se encargará de redirigir a #auth
 }
