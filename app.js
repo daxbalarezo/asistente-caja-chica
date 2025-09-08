@@ -1,4 +1,4 @@
-// --- app.js (Versión Final con AuthStateChange) ---
+// --- app.js (Versión Final con Router Corregido) ---
 import { db } from './db.js';
 import { renderDashboard } from './ui/cuadre.js';
 import { renderEmpresas } from './ui/empresas.js';
@@ -9,11 +9,11 @@ import { renderAuth, handleLogout } from './ui/auth.js';
 
 const routes = {
     '/': renderDashboard,
-    '/empresas': renderEmpresas,
-    '/desembolsos': renderDesembolsos,
-    '/rendiciones': renderRendiciones,
-    '/cuadre': renderCuadre,
-    '#auth': renderAuth,
+    'empresas': renderEmpresas,
+    'desembolsos': renderDesembolsos,
+    'rendiciones': renderRendiciones,
+    'cuadre': renderCuadre,
+    'auth': renderAuth,
 };
 
 const appRoot = document.getElementById('app-root');
@@ -22,25 +22,27 @@ let currentUser = null;
 // Listener principal que reacciona a los cambios de sesión (Login/Logout)
 db.auth.onAuthStateChange((event, session) => {
     currentUser = session?.user || null;
-    router(); // Llama al router cada vez que el estado de auth cambia
+    router();
 });
 
 async function router() {
-    const path = window.location.hash || '/';
+    // --- LÓGICA DEL ROUTER MEJORADA ---
+    const path = window.location.hash.slice(1) || '/'; // Obtenemos la ruta sin el '#'
     
     // Si no hay usuario y no estamos en la página de login, redirigir
-    if (!currentUser && path !== '#auth') {
-        window.location.hash = '#auth';
+    if (!currentUser && path !== 'auth') {
+        window.location.hash = 'auth';
         return;
     }
     
     // Si hay usuario y estamos en la página de login, redirigir al dashboard
-    if (currentUser && path === '#auth') {
+    if (currentUser && path === 'auth') {
         window.location.hash = '/';
         return;
     }
 
-    const viewRenderer = routes[path] || routes['#auth'];
+    // Buscamos la función que renderiza la vista
+    const viewRenderer = routes[path] || routes['/'];
     
     try {
         appRoot.innerHTML = '<h2>Cargando...</h2>';
@@ -60,21 +62,23 @@ function updateUI(user) {
         nav.style.display = 'flex';
         settings.style.display = 'flex';
 
-        // Añadimos un botón de Logout si no existe
-        if (!document.getElementById('logout-btn')) {
-            const logoutBtn = document.createElement('button');
+        // Añadimos o removemos el botón de Logout según sea necesario
+        let logoutBtn = document.getElementById('logout-btn');
+        if (!logoutBtn) {
+            logoutBtn = document.createElement('button');
             logoutBtn.id = 'logout-btn';
             logoutBtn.textContent = 'Cerrar Sesión';
             logoutBtn.className = 'btn btn-danger';
-            logoutBtn.onclick = handleLogout;
             settings.appendChild(logoutBtn);
         }
+        logoutBtn.onclick = handleLogout; // Nos aseguramos de que el evento esté siempre asignado
 
-        const path = window.location.hash.slice(1) || '/';
+        const currentPath = window.location.hash.slice(1) || '/';
         document.querySelectorAll('nav a').forEach(a => {
             const linkPath = a.getAttribute('href').slice(1);
-            a.classList.toggle('active', linkPath === path || (path === '/' && linkPath === ''));
+            a.classList.toggle('active', linkPath === currentPath);
         });
+
     } else {
         nav.style.display = 'none';
         settings.style.display = 'none';
