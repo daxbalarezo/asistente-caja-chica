@@ -1,4 +1,4 @@
-import * as db from '../db.js';
+import { db } from '../db.js'; // Usamos el cliente de Supabase
 import { createTable, formatCurrency } from './components.js';
 
 export async function renderDashboard(container) {
@@ -11,11 +11,10 @@ export async function renderDashboard(container) {
     const grid = document.getElementById('dashboard-grid');
 
     try {
-        const [empresas, desembolsos, rendiciones] = await Promise.all([
-            db.getAll('empresas'),
-            db.getAll('desembolsos'),
-            db.getAll('rendiciones')
-        ]);
+        // Obtenemos todos los datos de las 3 tablas desde Supabase
+        const { data: empresas } = await db.from('empresas').select('*');
+        const { data: desembolsos } = await db.from('desembolsos').select('empresaId, monto');
+        const { data: rendiciones } = await db.from('rendiciones').select('empresaId, monto');
 
         if (empresas.length === 0) {
             grid.innerHTML = '<p>No hay empresas registradas. Comience por agregar una en la sección "Empresas".</p>';
@@ -51,7 +50,7 @@ export async function renderDashboard(container) {
 }
 
 export async function renderCuadre(container) {
-    const empresas = await db.getAll('empresas');
+    const { data: empresas } = await db.from('empresas').select('*');
     container.innerHTML = `
         <div class="page-header no-print">
             <h2>Cuadre y Reportes</h2>
@@ -89,23 +88,22 @@ async function generateReport() {
     }
 
     try {
-        const [empresa, allDesembolsos, allRendiciones] = await Promise.all([
-            db.getById('empresas', empresaId),
-            db.getAll('desembolsos'),
-            db.getAll('rendiciones')
-        ]);
+        const { data: empresa } = await db.from('empresas').select('*').eq('id', empresaId).single();
         
-        let desembolsos = allDesembolsos.filter(d => d.empresaId === empresaId);
-        let rendiciones = allRendiciones.filter(r => r.empresaId === empresaId);
+        let desembolsosQuery = db.from('desembolsos').select('*').eq('empresaId', empresaId);
+        let rendicionesQuery = db.from('rendiciones').select('*').eq('empresaId', empresaId);
 
         if(startDate) {
-            desembolsos = desembolsos.filter(d => d.fecha >= startDate);
-            rendiciones = rendiciones.filter(r => r.fecha >= startDate);
+            desembolsosQuery = desembolsosQuery.gte('fecha', startDate);
+            rendicionesQuery = rendicionesQuery.gte('fecha', startDate);
         }
         if(endDate) {
-            desembolsos = desembolsos.filter(d => d.fecha <= endDate);
-            rendiciones = rendiciones.filter(r => r.fecha <= endDate);
+            desembolsosQuery = desembolsosQuery.lte('fecha', endDate);
+            rendicionesQuery = rendicionesQuery.lte('fecha', endDate);
         }
+
+        const { data: desembolsos } = await desembolsosQuery;
+        const { data: rendiciones } = await rendicionesQuery;
 
         const totalDesembolsado = desembolsos.reduce((sum, d) => sum + d.monto, 0);
         const totalRendido = rendiciones.reduce((sum, r) => sum + r.monto, 0);
