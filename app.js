@@ -27,24 +27,21 @@ db.auth.onAuthStateChange((event, session) => {
 
 async function router() {
     // --- LÓGICA DEL ROUTER MEJORADA ---
-    let path = window.location.hash.slice(1); // Obtenemos la ruta, ej: "/rendiciones" o "auth"
+    let path = window.location.hash.slice(1);
     if (path.startsWith('/')) {
-        path = path.slice(1); // Le quitamos la barra inicial para que quede "rendiciones"
+        path = path.slice(1);
     }
     
-    // Si no hay usuario y no estamos en la página de login, redirigir
     if (!currentUser && path !== 'auth') {
         window.location.hash = 'auth';
         return;
     }
     
-    // Si hay usuario y estamos en la página de login, redirigir al dashboard
     if (currentUser && path === 'auth') {
         window.location.hash = '/';
         return;
     }
 
-    // Si la ruta está vacía, es el dashboard
     const routeKey = path === '' ? '/' : path;
     const viewRenderer = routes[routeKey] || routes['/'];
     
@@ -63,7 +60,7 @@ function updateUI(user) {
     const settings = document.querySelector('.settings-menu');
     
     if (user) {
-        nav.style.display = ''; // Usamos '' para resetear al default del CSS en vez de 'flex'
+        nav.style.display = '';
         settings.style.display = 'flex';
 
         let logoutBtn = document.getElementById('logout-btn');
@@ -76,7 +73,6 @@ function updateUI(user) {
         }
         logoutBtn.onclick = handleLogout;
 
-        // Corregimos también cómo se detecta la ruta activa
         let currentPath = window.location.hash.slice(1);
         if (currentPath.startsWith('/')) {
             currentPath = currentPath.slice(1);
@@ -87,7 +83,6 @@ function updateUI(user) {
             if (linkPath.startsWith('/')) {
                 linkPath = linkPath.slice(1);
             }
-            // El dashboard es un caso especial
             if (linkPath === '' && (currentPath === '' || currentPath === '/')) {
                  a.classList.add('active');
             } else if (linkPath !== '' && linkPath === currentPath) {
@@ -108,19 +103,15 @@ function updateUI(user) {
 window.addEventListener('hashchange', router);
 
 // --- INICIO: Lógica para el Menú Hamburguesa ---
-// Este código se ejecuta una sola vez al cargar la página.
-
 const menuToggle = document.getElementById('menu-toggle');
 const nav = document.querySelector('header nav');
 
 if (menuToggle && nav) {
     menuToggle.addEventListener('click', () => {
         nav.classList.toggle('is-active');
-        // Cambia el ícono de la hamburguesa a una "X" y viceversa
         menuToggle.textContent = nav.classList.contains('is-active') ? '✕' : '☰';
     });
 
-    // Cierra el menú automáticamente al hacer clic en un enlace de navegación
     nav.querySelectorAll('a').forEach(link => {
         link.addEventListener('click', () => {
             if (nav.classList.contains('is-active')) {
@@ -131,3 +122,37 @@ if (menuToggle && nav) {
     });
 }
 // --- FIN: Lógica para el Menú Hamburguesa ---
+
+
+// --- INICIO: Lógica para el Modo Oscuro ---
+const themeToggleBtn = document.getElementById('theme-toggle');
+
+// Función para aplicar el tema guardado al cargar la página
+function applyInitialTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light'; // 'light' como predeterminado
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    themeToggleBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+}
+
+// Event listener para el botón que cambia el tema
+themeToggleBtn.addEventListener('click', () => {
+    // 1. Obtener el tema actual del atributo data-theme en la etiqueta <html>
+    let currentTheme = document.documentElement.getAttribute('data-theme');
+    
+    // 2. Cambiar al tema opuesto
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    
+    // 3. Aplicar el nuevo tema al documento
+    document.documentElement.setAttribute('data-theme', newTheme);
+    
+    // 4. Actualizar el ícono del botón
+    themeToggleBtn.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+    
+    // 5. Guardar la preferencia del usuario en el almacenamiento local
+    localStorage.setItem('theme', newTheme);
+});
+
+// Llamamos a la función al inicio para establecer el tema correcto
+applyInitialTheme();
+// --- FIN: Lógica para el Modo Oscuro ---
+
