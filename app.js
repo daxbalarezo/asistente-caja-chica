@@ -1,4 +1,6 @@
-import { openDB, exportData, importData } from './db.js';
+// --- app.js (Actualizado para Supabase) ---
+
+// Ya no necesitamos importar nada de db.js aquí.
 import { renderDashboard } from './ui/cuadre.js';
 import { renderEmpresas } from './ui/empresas.js';
 import { renderDesembolsos } from './ui/desembolsos.js';
@@ -15,7 +17,7 @@ const routes = {
 
 const appRoot = document.getElementById('app-root');
 
-// Función de ruteo simple
+// Función de ruteo simple (sin cambios)
 async function router() {
     const path = window.location.hash.slice(1) || '/';
     const viewRenderer = routes[path];
@@ -49,49 +51,22 @@ function updateActiveLink() {
 // --- Event Listeners ---
 // Navegación
 window.addEventListener('hashchange', router);
-window.addEventListener('load', async () => {
-    try {
-        await openDB();
-        await router();
-    } catch (error) {
-        console.error("Error al inicializar la aplicación:", error);
-        appRoot.innerHTML = `<p class="error">No se pudo inicializar la base de datos.</p>`;
-    }
-});
+// La carga ahora es más simple, ya no necesita 'openDB()'
+window.addEventListener('load', router);
 
-// Ajustes: Exportar/Importar
-document.getElementById('export-json').addEventListener('click', async (e) => {
+// Ajustes: Exportar/Importar (Temporalmente deshabilitados)
+document.getElementById('export-json').addEventListener('click', (e) => {
     e.preventDefault();
-    try {
-        await exportData();
-        alert('Datos exportados con éxito.');
-    } catch (error) {
-        console.error('Error al exportar datos:', error);
-        alert('Hubo un error al exportar los datos.');
-    }
+    alert('Esta función será rediseñada para funcionar con la base de datos en la nube.');
 });
 
 const importInput = document.getElementById('import-json-input');
-importInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (confirm('¿Estás seguro de que quieres importar estos datos? Se borrarán todos los datos actuales.')) {
-        try {
-            await importData(file);
-            alert('Datos importados con éxito. La página se recargará.');
-            window.location.hash = '/';
-            window.location.reload();
-        } catch (error) {
-            console.error('Error al importar datos:', error);
-            alert('Hubo un error al importar los datos.');
-        }
-    }
-    // Resetear el input para permitir importar el mismo archivo de nuevo
+importInput.addEventListener('change', (e) => {
+    alert('Esta función será rediseñada para funcionar con la base de datos en la nube.');
     importInput.value = ''; 
 });
 
-// Modo Oscuro
+// Modo Oscuro (sin cambios)
 const themeToggle = document.getElementById('theme-toggle');
 themeToggle.addEventListener('click', () => {
     const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -101,7 +76,6 @@ themeToggle.addEventListener('click', () => {
     themeToggle.textContent = newTheme === 'dark' ? '☀️' : '🌙';
 });
 
-// Cargar tema guardado
 const savedTheme = localStorage.getItem('theme') || 'light';
 document.documentElement.setAttribute('data-theme', savedTheme);
 themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
