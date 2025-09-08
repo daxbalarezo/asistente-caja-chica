@@ -1,8 +1,7 @@
-import { getAll, getById, add, put, remove } from '../db.js';
-import { createEmpresa } from '../models.js';
+import { db } from '../db.js'; // Ahora importamos el cliente de Supabase
 import { showModal, hideModal, createTable } from './components.js';
 
-const STORE_NAME = 'empresas';
+const TABLE_NAME = 'empresas';
 
 export async function renderEmpresas(container) {
     container.innerHTML = `
@@ -22,45 +21,50 @@ export async function renderEmpresas(container) {
 
 async function loadEmpresasTable() {
     const listContainer = document.getElementById('empresas-list');
-    try {
-        const empresas = await getAll(STORE_NAME);
-        const headers = ['Nombre', 'Estado', 'Fecha Creación', 'Acciones'];
-        const dataRows = empresas.map(e => [
-            e.nombre,
-            e.estado,
-            new Date(e.createdAt).toLocaleDateString(),
-            `
-                <div class="actions">
-                    <button class="btn btn-secondary btn-sm edit-btn" data-id="${e.id}">✏️</button>
-                    <button class="btn btn-danger btn-sm delete-btn" data-id="${e.id}">🗑️</button>
-                </div>
-            `
-        ]);
-        listContainer.innerHTML = createTable(headers, dataRows);
+    
+    // --- CAMBIO CLAVE: Leer datos de Supabase ---
+    const { data: empresas, error } = await db.from(TABLE_NAME).select('*').order('createdAt', { ascending: false });
 
-        // Attach event listeners after rendering
-        listContainer.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', async (event) => {
-                const id = event.currentTarget.dataset.id;
-                const empresa = await getById(STORE_NAME, id);
-                showEmpresaForm(empresa);
-            });
-        });
-
-        listContainer.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', async (event) => {
-                const id = event.currentTarget.dataset.id;
-                if (confirm('¿Estás seguro de que quieres eliminar esta empresa?')) {
-                    await remove(STORE_NAME, id);
-                    await loadEmpresasTable();
-                }
-            });
-        });
-
-    } catch (error) {
+    if (error) {
         console.error("Error al cargar empresas:", error);
-        listContainer.innerHTML = "<p>Error al cargar las empresas.</p>";
+        listContainer.innerHTML = "<p>Error al cargar las empresas desde la nube.</p>";
+        return;
     }
+    
+    const headers = ['Nombre', 'Estado', 'Fecha Creación', 'Acciones'];
+    const dataRows = empresas.map(e => [
+        e.nombre,
+        e.estado,
+        new Date(e.createdAt).toLocaleDateString(),
+        `
+            <div class="actions">
+                <button class="btn btn-secondary btn-sm edit-btn" data-id="${e.id}">✏️</button>
+                <button class="btn btn-danger btn-sm delete-btn" data-id="${e.id}">🗑️</button>
+            </div>
+        `
+    ]);
+    listContainer.innerHTML = createTable(headers, dataRows);
+
+    listContainer.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', async (event) => {
+            const id = event.currentTarget.dataset.id;
+            const { data: empresa, error } = await db.from(TABLE_NAME).select('*').eq('id', id).single();
+            if (error) { console.error(error); return; }
+            showEmpresaForm(empresa);
+        });
+    });
+
+    listContainer.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (event) => {
+            const id = event.currentTarget.dataset.id;
+            if (confirm('¿Estás seguro de que quieres eliminar esta empresa?')) {
+                // --- CAMBIO CLAVE: Borrar datos en Supabase ---
+                const { error } = await db.from(TABLE_NAME).delete().eq('id', id);
+                if (error) { console.error(error); alert("Error al eliminar"); }
+                await loadEmpresasTable();
+            }
+        });
+    });
 }
 
 function showEmpresaForm(empresa = null) {
@@ -82,7 +86,7 @@ function showEmpresaForm(empresa = null) {
                 </div>
             </div>
             <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-container').style.display='none'">Cancelar</button>
+                <button type="button" class="btn btn-secondary" onclick="hideModal()">Cancelar</button>
                 <button type="submit" class="btn btn-primary">${isEditing ? 'Actualizar' : 'Guardar'}</button>
             </div>
         </form>
@@ -97,17 +101,21 @@ function showEmpresaForm(empresa = null) {
 
         try {
             if (id) { // Edit
-                const existingEmpresa = await getById(STORE_NAME, id);
-                const updatedEmpresa = { ...existingEmpresa, nombre: formData.get('nombre'), estado: formData.get('estado') };
-                await put(STORE_NAME, updatedEmpresa);
+                const empresaActualizada = { nombre: formData.get('nombre'), estado: formData.get('estado') };
+                // --- CAMBIO CLAVE: Actualizar datos en Supabase ---
+                const { error } = await db.from(TABLE_NAME).update(empresaActualizada).eq('id', id);
+                if (error) { throw error; }
             } else { // Add
-                const nuevaEmpresa = createEmpresa(formData.get('nombre'));
-                await add(STORE_NAME, nuevaEmpresa);
+                const nuevaEmpresa = { nombre: formData.get('nombre'), estado: formData.get('estado') };
+                // --- CAMBIO CLAVE: Insertar datos en Supabase ---
+                const { error } = await db.from(TABLE_NAME).insert(nuevaEmpresa);
+                if (error) { throw error; }
             }
             hideModal();
             await loadEmpresasTable();
         } catch (error) {
-            alert(error.message);
+            console.error(error);
+            alert("Error al guardar la empresa.");
         }
     });
 }
