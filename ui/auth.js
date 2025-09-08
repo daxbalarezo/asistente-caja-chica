@@ -1,5 +1,3 @@
-// ui/auth.js (Versión Final)
-
 import { db } from '../db.js';
 
 // Función para mostrar el formulario de Login/Registro
@@ -47,11 +45,8 @@ export function renderAuth(container) {
         if (error) {
             errorDiv.textContent = 'Email o contraseña incorrectos.';
             console.error('Error de inicio de sesión:', error.message);
-        } else {
-            // --- ESTE ES EL CAMBIO CLAVE ---
-            // Simplemente cambiamos el hash. El router en app.js se encargará del resto.
-            window.location.hash = '/'; 
         }
+        // Ya no hacemos nada aquí. El listener 'onAuthStateChange' en app.js se encargará de la redirección.
     });
 
     registerBtn.addEventListener('click', async () => {
@@ -61,7 +56,6 @@ export function renderAuth(container) {
                 email: emailInput.value,
                 password: passwordInput.value,
             });
-
             if (error) {
                 errorDiv.textContent = 'Error: ' + error.message;
             } else {
@@ -71,9 +65,8 @@ export function renderAuth(container) {
     });
 }
 
-// Función para cerrar sesión
+// Función para cerrar sesión que se llama desde app.js
 export async function handleLogout() {
     await db.auth.signOut();
-    window.location.hash = '#auth';
-    window.location.reload(); // Aquí sí es útil recargar para limpiar todo.
+    // El listener 'onAuthStateChange' en app.js se encargará de redirigir a #auth
 }
