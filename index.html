@@ -2,334 +2,66 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asistente Contable - Caja Chica</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
-    <meta name="theme-color" content="#007bff">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Caja Chica">
 </head>
 <body>
     <div class="app-container">
         <header class="app-header no-print">
+            <!-- Título y Logo de la Aplicación -->
             <h1>
                 <img src="assets/logo.png" alt="Logo" class="header-logo">
-                <span class="header-title">Caja Chica</span>
+                Asistente de Caja Chica
             </h1>
-            <!-- Desktop Navigation -->
-            <nav class="desktop-nav">
+
+            <!-- Botón de Menú Hamburguesa (visible solo en móviles) -->
+            <button id="menu-toggle" class="menu-toggle-btn">☰</button>
+
+            <!-- Navegación Principal -->
+            <nav>
                 <a href="#/">Dashboard</a>
                 <a href="#/empresas">Empresas</a>
                 <a href="#/desembolsos">Desembolsos</a>
                 <a href="#/rendiciones">Rendiciones</a>
-                <a href="#/cuadre">Cuadre</a>
+                <a href="#/cuadre">Cuadre y Reportes</a>
             </nav>
+
+            <!-- Menú de Ajustes y Acciones -->
             <div class="settings-menu">
-                <button id="theme-toggle" title="Cambiar tema">🌙</button>
+                <button id="theme-toggle">🌙</button>
                 <div class="dropdown">
-                    <button class="dropdown-btn" title="Ajustes">⚙️</button>
+                    <button class="dropdown-btn">⚙️ Ajustes</button>
                     <div class="dropdown-content">
-                        <a href="#" id="export-json">📤 Exportar JSON</a>
-                        <label for="import-json-input" class="import-label">📥 Importar JSON</label>
+                        <a href="#" id="export-json">Exportar JSON</a>
+                        <label for="import-json-input" class="import-label">Importar JSON</label>
                         <input type="file" id="import-json-input" accept=".json" style="display: none;">
                     </div>
                 </div>
+                <!-- El botón de Cerrar Sesión se añadirá aquí dinámicamente con JavaScript -->
             </div>
         </header>
         
-        <!-- Mobile Bottom Navigation -->
-        <nav class="mobile-nav no-print">
-            <a href="#/" class="mobile-nav-link" data-page="dashboard">
-                <span class="mobile-nav-icon">📊</span>
-                <span>Inicio</span>
-            </a>
-            <a href="#/empresas" class="mobile-nav-link" data-page="empresas">
-                <span class="mobile-nav-icon">🏢</span>
-                <span>Empresas</span>
-            </a>
-            <a href="#/desembolsos" class="mobile-nav-link" data-page="desembolsos">
-                <span class="mobile-nav-icon">💸</span>
-                <span>Gastos</span>
-            </a>
-            <a href="#/rendiciones" class="mobile-nav-link" data-page="rendiciones">
-                <span class="mobile-nav-icon">🧾</span>
-                <span>Documentos</span>
-            </a>
-            <a href="#/cuadre" class="mobile-nav-link" data-page="cuadre">
-                <span class="mobile-nav-icon">📋</span>
-                <span>Reportes</span>
-            </a>
-        </nav>
-        
         <main id="app-root">
-            <!-- Content will be loaded here -->
+            <!-- El contenido dinámico de la aplicación se renderizará aquí -->
         </main>
         
         <footer class="app-footer no-print">
-            <p>&copy; 2025 - Aplicación de Caja Chica</p>
+            <p>&copy; 2025 - Asistente Contable</p>
         </footer>
     </div>
 
-    <!-- Enhanced Modal -->
+    <!-- Contenedor para la ventana modal -->
     <div id="modal-container" class="modal-container" style="display:none;">
         <div class="modal-content">
-            <button class="modal-close-btn" aria-label="Cerrar modal">&times;</button>
+            <span class="modal-close-btn">&times;</span>
             <div id="modal-body"></div>
         </div>
     </div>
-
-    <!-- Loading Spinner -->
-    <div id="loading-spinner" class="loading-spinner" style="display:none;">
-        <div class="spinner"></div>
-        <p>Cargando...</p>
-    </div>
-
-    <!-- Toast Notifications -->
-    <div id="toast-container" class="toast-container"></div>
     
+    <!-- Script principal de la aplicación -->
     <script type="module" src="app.js"></script>
-    <script>
-        // Mobile navigation active state management
-        function updateMobileNavigation() {
-            const currentPath = window.location.hash.slice(1);
-            const normalizedPath = currentPath.startsWith('/') ? currentPath.slice(1) : currentPath;
-            
-            document.querySelectorAll('.mobile-nav-link').forEach(link => {
-                link.classList.remove('active');
-                
-                const href = link.getAttribute('href').slice(1);
-                const linkPath = href.startsWith('/') ? href.slice(1) : href;
-                
-                if (linkPath === '' && (normalizedPath === '' || normalizedPath === '/')) {
-                    link.classList.add('active');
-                } else if (linkPath !== '' && linkPath === normalizedPath) {
-                    link.classList.add('active');
-                }
-            });
-        }
-
-        // Update mobile navigation on hash change
-        window.addEventListener('hashchange', updateMobileNavigation);
-        window.addEventListener('DOMContentLoaded', updateMobileNavigation);
-
-        // Touch interaction improvements
-        document.addEventListener('touchstart', function() {}, { passive: true });
-
-        // Prevent zoom on double tap for input fields
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', function(event) {
-            const now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
-                event.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, false);
-
-        // Theme toggle enhancement
-        document.addEventListener('DOMContentLoaded', function() {
-            const themeToggle = document.getElementById('theme-toggle');
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            
-            if (savedTheme === 'dark') {
-                document.body.setAttribute('data-theme', 'dark');
-                themeToggle.textContent = '☀️';
-            }
-
-            themeToggle.addEventListener('click', function() {
-                const currentTheme = document.body.getAttribute('data-theme') || 'light';
-                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-                
-                document.body.setAttribute('data-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
-                themeToggle.textContent = newTheme === 'dark' ? '☀️' : '🌙';
-            });
-        });
-
-        // Enhanced modal behavior for mobile
-        function setupModalBehavior() {
-            const modalContainer = document.getElementById('modal-container');
-            
-            modalContainer.addEventListener('touchmove', function(e) {
-                e.preventDefault();
-            }, { passive: false });
-
-            // Close modal on backdrop click (desktop only)
-            modalContainer.addEventListener('click', function(e) {
-                if (e.target === modalContainer && window.innerWidth >= 768) {
-                    hideModal();
-                }
-            });
-        }
-
-        // Loading states
-        function showLoadingSpinner() {
-            document.getElementById('loading-spinner').style.display = 'flex';
-        }
-
-        function hideLoadingSpinner() {
-            document.getElementById('loading-spinner').style.display = 'none';
-        }
-
-        // Toast notifications
-        function showToast(message, type = 'info', duration = 3000) {
-            const toastContainer = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast toast-${type}`;
-            toast.textContent = message;
-            
-            toastContainer.appendChild(toast);
-            
-            // Animate in
-            setTimeout(() => toast.classList.add('show'), 100);
-            
-            // Remove after duration
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => {
-                    if (toastContainer.contains(toast)) {
-                        toastContainer.removeChild(toast);
-                    }
-                }, 300);
-            }, duration);
-        }
-
-        // Initialize mobile optimizations
-        setupModalBehavior();
-    </script>
-
-    <style>
-        /* Additional mobile-specific styles */
-        .header-title {
-            display: none;
-        }
-
-        .loading-spinner {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(255, 255, 255, 0.9);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 1rem;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .toast-container {
-            position: fixed;
-            top: 80px;
-            right: 1rem;
-            z-index: 1500;
-            max-width: calc(100% - 2rem);
-        }
-
-        .toast {
-            background-color: var(--dark-color);
-            color: white;
-            padding: 0.875rem 1.25rem;
-            border-radius: var(--border-radius);
-            margin-bottom: 0.5rem;
-            box-shadow: var(--box-shadow);
-            transform: translateX(100%);
-            transition: transform 0.3s ease;
-            font-size: 0.9rem;
-        }
-
-        .toast.show {
-            transform: translateX(0);
-        }
-
-        .toast-success {
-            background-color: var(--success-color);
-        }
-
-        .toast-error {
-            background-color: var(--danger-color);
-        }
-
-        .toast-warning {
-            background-color: var(--warning-color);
-            color: var(--dark-color);
-        }
-
-        @media (min-width: 768px) {
-            .header-title {
-                display: inline;
-            }
-            
-            .desktop-nav {
-                display: flex !important;
-            }
-            
-            .toast-container {
-                top: 90px;
-                right: 2rem;
-            }
-        }
-
-        /* Hide scrollbar for webkit browsers but keep functionality */
-        .table-container::-webkit-scrollbar {
-            height: 4px;
-        }
-
-        .table-container::-webkit-scrollbar-track {
-            background: var(--light-color);
-            border-radius: 2px;
-        }
-
-        .table-container::-webkit-scrollbar-thumb {
-            background: var(--border-color);
-            border-radius: 2px;
-        }
-
-        .table-container::-webkit-scrollbar-thumb:hover {
-            background: var(--secondary-color);
-        }
-
-        /* Improve touch scrolling */
-        .table-container {
-            -webkit-overflow-scrolling: touch;
-            scroll-behavior: smooth;
-        }
-
-        /* Better focus states for accessibility */
-        button:focus,
-        input:focus,
-        select:focus,
-        textarea:focus,
-        .btn:focus {
-            outline: 3px solid rgba(0, 123, 255, 0.3);
-            outline-offset: 2px;
-        }
-
-        /* Reduce animations for users who prefer reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-            * {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
-        }
-    </style>
 </body>
 </html>

@@ -13,12 +13,6 @@
     --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     --box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     --border-radius: 8px;
-    
-    /* Mobile-specific variables */
-    --mobile-padding: 1rem;
-    --mobile-gap: 0.75rem;
-    --touch-target: 44px;
-    --bottom-nav-height: 70px;
 }
 
 [data-theme="dark"] {
@@ -38,341 +32,214 @@ body {
     margin: 0;
     transition: background-color 0.3s, color 0.3s;
     line-height: 1.6;
-    /* Mobile optimizations */
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    touch-action: manipulation;
 }
 
 .app-container {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    position: relative;
 }
 
 main {
     flex-grow: 1;
-    padding: var(--mobile-padding);
-    padding-bottom: calc(var(--bottom-nav-height) + var(--mobile-padding));
+    padding: 2rem;
 }
 
-/* --- Mobile-First Header --- */
+/* --- Cabecera y Navegación --- */
 .app-header {
     background-color: var(--light-color);
-    padding: 1rem var(--mobile-padding);
+    padding: 1rem 2rem;
     border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     box-shadow: var(--box-shadow);
-    position: sticky;
-    top: 0;
-    z-index: 100;
 }
-
 .app-header h1 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     color: var(--primary-color);
     display: flex;
     align-items: center;
-    justify-content: center;
-    text-align: center;
 }
-
 .header-logo {
-    height: 32px;
-    margin-right: 10px;
+    height: 40px;
+    vertical-align: middle;
+    margin-right: 15px;
 }
-
-/* Hide desktop navigation on mobile */
-.app-header nav {
-    display: none;
+.app-header nav a {
+    color: var(--text-color);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    transition: background-color 0.2s;
 }
-
+.app-header nav a:hover, .app-header nav a.active {
+    background-color: var(--primary-color);
+    color: white;
+}
 .settings-menu {
-    position: absolute;
-    top: 1rem;
-    right: var(--mobile-padding);
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 1rem;
 }
 
-/* --- Mobile Bottom Navigation --- */
-.mobile-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: var(--bottom-nav-height);
+/* --- Pie de Página --- */
+.app-footer {
+    text-align: center;
+    padding: 1rem;
     background-color: var(--light-color);
     border-top: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    z-index: 1000;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-}
-
-.mobile-nav a {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    font-size: 0.9rem;
     color: var(--secondary-color);
-    text-decoration: none;
-    font-size: 0.75rem;
-    font-weight: 500;
-    min-height: var(--touch-target);
-    min-width: var(--touch-target);
-    padding: 0.25rem;
-    border-radius: var(--border-radius);
-    transition: all 0.2s ease;
 }
 
-.mobile-nav a.active {
-    color: var(--primary-color);
-    background-color: rgba(0, 123, 255, 0.1);
-}
-
-.mobile-nav a:hover {
-    color: var(--primary-color);
-}
-
-.mobile-nav-icon {
-    font-size: 1.25rem;
-    margin-bottom: 2px;
-}
-
-/* --- Cards and Layout --- */
+/* --- Componentes UI --- */
 .page-header {
     display: flex;
-    flex-direction: column;
-    gap: var(--mobile-gap);
-    margin-bottom: 1.5rem;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
-
 .page-header h2 {
     margin: 0;
-    font-size: 1.5rem;
 }
 
 .card {
     background-color: var(--light-color);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    padding: var(--mobile-padding);
+    padding: 1.5rem;
     box-shadow: var(--box-shadow);
-    margin-bottom: var(--mobile-gap);
 }
 
 .dashboard-grid {
-    display: flex;
-    flex-direction: column;
-    gap: var(--mobile-gap);
-}
-
-.kpi-card {
-    text-align: center;
-    padding: 1.5rem var(--mobile-padding);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
 }
 
 .kpi-card h3 {
     margin-top: 0;
     color: var(--primary-color);
-    font-size: 1.1rem;
 }
-
 .kpi-card p {
     margin: 0.5rem 0;
-    font-size: 1.1rem;
-}
-
-.kpi-card .difference {
-    font-weight: bold;
     font-size: 1.2rem;
 }
-
+.kpi-card .difference {
+    font-weight: bold;
+}
 .difference.positive { color: var(--success-color); }
 .difference.negative { color: var(--danger-color); }
 .difference.zero { color: var(--secondary-color); }
 
-/* --- Mobile Forms --- */
-.form-grid {
-    display: flex;
-    flex-direction: column;
-    gap: var(--mobile-gap);
-}
 
+/* --- Formularios --- */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
 .form-group {
     display: flex;
     flex-direction: column;
 }
-
 .form-group label {
     margin-bottom: 0.5rem;
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: var(--dark-color);
+    font-weight: bold;
 }
-
-.form-group input, 
-.form-group select, 
-.form-group textarea {
-    padding: 0.875rem;
-    border: 2px solid var(--border-color);
+.form-group input, .form-group select, .form-group textarea {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     background-color: var(--background-color);
     color: var(--text-color);
     font-size: 1rem;
-    min-height: var(--touch-target);
-    transition: border-color 0.2s ease;
 }
-
-.form-group input:focus, 
-.form-group select:focus, 
-.form-group textarea:focus {
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
-
 .form-actions {
     margin-top: 1.5rem;
     display: flex;
-    flex-direction: column;
-    gap: var(--mobile-gap);
+    gap: 1rem;
+    justify-content: flex-end;
 }
 
-/* --- Mobile Buttons --- */
+/* --- Botones --- */
 button, .btn {
-    padding: 0.875rem 1.5rem;
+    padding: 0.75rem 1.5rem;
     border: none;
     border-radius: var(--border-radius);
     cursor: pointer;
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: bold;
     text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-block;
     text-align: center;
-    min-height: var(--touch-target);
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: opacity 0.2s;
 }
-
 button:hover, .btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    opacity: 0.85;
 }
-
-button:active, .btn:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.btn-primary { 
-    background-color: var(--primary-color); 
-    color: white; 
-}
-
-.btn-secondary { 
-    background-color: var(--secondary-color); 
-    color: white; 
-}
-
-.btn-danger { 
-    background-color: var(--danger-color); 
-    color: white; 
-}
-
-.btn-success { 
-    background-color: var(--success-color); 
-    color: white; 
-}
-
-.btn-sm { 
-    padding: 0.5rem 0.875rem; 
-    font-size: 0.875rem;
-    min-height: 36px;
-}
+.btn-primary { background-color: var(--primary-color); color: white; }
+.btn-secondary { background-color: var(--secondary-color); color: white; }
+.btn-danger { background-color: var(--danger-color); color: white; }
+.btn-success { background-color: var(--success-color); color: white; }
+.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
 
 #theme-toggle {
-    background: var(--secondary-color);
-    color: white;
+    background: none;
     border: none;
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     cursor: pointer;
-    min-height: var(--touch-target);
-    min-width: var(--touch-target);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
-/* --- Mobile Tables --- */
+/* --- Tablas --- */
 .table-container {
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+th, td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+thead {
+    background-color: var(--light-color);
+}
+td .actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* --- Filtros --- */
+.filters {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1rem;
+    background-color: var(--light-color);
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+}
+.filters input, .filters select {
+    padding: 0.5rem;
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 600px; /* Minimum width for horizontal scroll */
-}
 
-th, td {
-    padding: 0.75rem 0.5rem;
-    text-align: left;
-    border-bottom: 1px solid var(--border-color);
-    white-space: nowrap;
-}
-
-thead {
-    background-color: var(--light-color);
-    position: sticky;
-    top: 0;
-}
-
-td .actions {
-    display: flex;
-    gap: 0.25rem;
-    min-width: 100px;
-}
-
-/* --- Mobile Filters --- */
-.filters {
-    display: flex;
-    flex-direction: column;
-    gap: var(--mobile-gap);
-    padding: var(--mobile-padding);
-    background-color: var(--light-color);
-    border-radius: var(--border-radius);
-    margin-bottom: var(--mobile-gap);
-}
-
-.filters input, .filters select {
-    padding: 0.75rem;
-    border-radius: var(--border-radius);
-    border: 2px solid var(--border-color);
-    font-size: 1rem;
-    min-height: var(--touch-target);
-}
-
-.filter-row {
-    display: flex;
-    gap: var(--mobile-gap);
-}
-
-.filter-row > * {
-    flex: 1;
-}
-
-/* --- Mobile Modal --- */
+/* --- Modal --- */
 .modal-container {
     position: fixed;
     z-index: 1000;
@@ -382,234 +249,184 @@ td .actions {
     height: 100%;
     background-color: rgba(0,0,0,0.6);
     display: flex;
-    align-items: flex-end;
     justify-content: center;
-    padding: 0;
+    align-items: center;
 }
-
 .modal-content {
     background-color: var(--background-color);
-    padding: var(--mobile-padding);
-    border-radius: var(--border-radius) var(--border-radius) 0 0;
-    width: 100%;
-    max-height: 85vh;
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    width: 90%;
+    max-width: 700px;
     position: relative;
+    max-height: 90vh;
     overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    animation: slideUp 0.3s ease-out;
 }
-
-@keyframes slideUp {
-    from {
-        transform: translateY(100%);
-    }
-    to {
-        transform: translateY(0);
-    }
-}
-
 .modal-close-btn {
     position: absolute;
-    top: var(--mobile-padding);
-    right: var(--mobile-padding);
+    top: 1rem;
+    right: 1.5rem;
     color: var(--secondary-color);
-    font-size: 1.5rem;
+    font-size: 2rem;
     font-weight: bold;
     cursor: pointer;
-    min-height: var(--touch-target);
-    min-width: var(--touch-target);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background-color: var(--light-color);
 }
 
-/* --- Dropdown Mobile --- */
+/* --- Dropdown (Ajustes) --- */
 .dropdown {
     position: relative;
     display: inline-block;
 }
-
 .dropdown-btn {
     background-color: var(--secondary-color);
     color: white;
-    min-height: var(--touch-target);
-    min-width: var(--touch-target);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.25rem;
 }
-
 .dropdown-content {
     display: none;
     position: absolute;
     right: 0;
-    top: 100%;
     background-color: var(--light-color);
-    min-width: 180px;
+    min-width: 160px;
     box-shadow: var(--box-shadow);
     z-index: 1;
     border-radius: var(--border-radius);
     overflow: hidden;
-    margin-top: 0.25rem;
 }
-
-.dropdown-content a, 
-.dropdown-content .import-label {
+.dropdown-content a, .dropdown-content .import-label {
     color: var(--text-color);
-    padding: 1rem;
+    padding: 12px 16px;
     text-decoration: none;
     display: block;
     cursor: pointer;
-    min-height: var(--touch-target);
-    display: flex;
-    align-items: center;
 }
-
-.dropdown-content a:hover, 
-.dropdown-content .import-label:hover {
+.dropdown-content a:hover, .dropdown-content .import-label:hover {
     background-color: var(--border-color);
 }
-
-.dropdown:hover .dropdown-content,
-.dropdown:focus-within .dropdown-content {
+.dropdown:hover .dropdown-content {
     display: block;
 }
 
-/* --- Auth Page Mobile --- */
-.auth-container { 
-    max-width: none; 
-    margin: 2rem var(--mobile-padding);
-    width: auto;
-}
-
-/* --- Print Styles (unchanged) --- */
+/* --- Estilos de Impresión --- */
 @media print {
     body {
         background-color: #fff;
         color: #000;
     }
-    .no-print, .mobile-nav {
+    .no-print {
         display: none !important;
     }
     main {
         padding: 0;
-        padding-bottom: 0;
     }
     .print-area {
         display: block !important;
         box-shadow: none;
         border: none;
     }
-    /* ... rest of print styles remain the same ... */
+    .print-header {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 2rem;
+        border-bottom: 2px solid #000;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+    }
+    .print-header img {
+        height: 60px;
+    }
+    .print-header h1 {
+        margin: 0;
+    }
+    .print-header p {
+        margin: 0;
+    }
+    table {
+        font-size: 10pt;
+    }
+    th, td {
+        padding: 0.5rem;
+        border: 1px solid #ccc;
+    }
+    thead {
+        background-color: #eee;
+    }
+    .print-summary {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 2px solid #000;
+        float: right;
+        width: 300px;
+        text-align: right;
+    }
+    .print-summary p {
+        font-size: 12pt;
+        margin: 0.5rem 0;
+    }
+    @page {
+        size: A4;
+        margin: 2cm;
+    }
 }
 
-/* --- Desktop Overrides --- */
-@media (min-width: 768px) {
-    :root {
-        --mobile-padding: 2rem;
-        --mobile-gap: 1rem;
-    }
-    
-    main {
-        padding: 2rem;
-        padding-bottom: 2rem;
-    }
-    
+/* --- INICIO: Estilos Móviles y Responsivos --- */
+
+.menu-toggle-btn {
+    display: none; /* Oculto por defecto en escritorio */
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: var(--primary-color);
+    z-index: 1001; /* Asegura que esté por encima de otros elementos */
+}
+
+@media (max-width: 768px) {
     .app-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1rem 2rem;
+        padding: 0.5rem 1rem; /* Menos padding en la cabecera móvil */
     }
-    
+
     .app-header h1 {
-        font-size: 1.5rem;
-        justify-content: flex-start;
+        font-size: 1.2rem; /* Título más pequeño */
     }
-    
-    .header-logo {
-        height: 40px;
-        margin-right: 15px;
-    }
-    
+
     .app-header nav {
-        display: flex !important;
-        gap: 1rem;
+        display: none; /* Ocultamos la navegación */
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        background-color: var(--background-color);
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 2rem;
+        z-index: 1000;
     }
-    
+
+    .app-header nav.is-active {
+        display: flex; /* La mostramos cuando tenga la clase 'is-active' */
+    }
+
     .app-header nav a {
-        color: var(--text-color);
-        text-decoration: none;
-        padding: 0.5rem 1rem;
-        border-radius: var(--border-radius);
-        transition: background-color 0.2s;
+        font-size: 1.5rem;
     }
-    
-    .app-header nav a:hover, 
-    .app-header nav a.active {
-        background-color: var(--primary-color);
-        color: white;
+
+    .menu-toggle-btn {
+        display: block; /* Mostramos el botón hamburguesa */
     }
-    
-    .mobile-nav {
+
+    main {
+        padding: 1rem; /* Reducimos el padding en móvil */
+    }
+
+    /* Ocultar menú de ajustes de escritorio y dejar solo el de sesión */
+    .settings-menu .dropdown,
+    .settings-menu #theme-toggle {
         display: none;
     }
-    
-    .settings-menu {
-        position: static;
-        gap: 1rem;
-    }
-    
-    .page-header {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-    
-    .dashboard-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-    }
-    
-    .form-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1rem;
-    }
-    
-    .form-actions {
-        flex-direction: row;
-        justify-content: flex-end;
-    }
-    
-    .filters {
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    
-    .modal-container {
-        align-items: center;
-        padding: 2rem;
-    }
-    
-    .modal-content {
-        width: 90%;
-        max-width: 700px;
-        max-height: 90vh;
-        border-radius: var(--border-radius);
-        animation: none;
-        padding: 2rem;
-    }
-    
-    .auth-container {
-        max-width: 400px;
-        margin: 3rem auto;
-    }
 }
+
+/* --- FIN: Estilos Móviles y Responsivos --- */
