@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente Contable - Caja Chica</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header no-print">
+            <h1>
+                <img src="assets/logo.png" alt="Logo" class="header-logo">
+                Asistente de Caja Chica
+            </h1>
+            <nav>
+                <a href="#/">Dashboard</a>
+                <a href="#/empresas">Empresas</a>
+                <a href="#/desembolsos">Desembolsos</a>
+                <a href="#/rendiciones">Rendiciones</a>
+                <a href="#/cuadre">Cuadre y Reportes</a>
+            </nav>
+            <div class="settings-menu">
+                <button id="theme-toggle">🌙</button>
+                <div class="dropdown">
+                    <button class="dropdown-btn">⚙️ Ajustes</button>
+                    <div class="dropdown-content">
+                        <a href="#" id="export-json">Exportar JSON</a>
+                        <label for="import-json-input" class="import-label">Importar JSON</label>
+                        <input type="file" id="import-json-input" accept=".json" style="display: none;">
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <main id="app-root">
+            </main>
+        
+        <footer class="app-footer no-print">
+            <p>&copy; 2025 - Aplicación Estática con IndexedDB</p>
+        </footer>
+    </div>
+
+    <div id="modal-container" class="modal-container" style="display:none;">
+        <div class="modal-content">
+            <span class="modal-close-btn">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+    
+    <script type="module" src="app.js"></script>
+</body>
+</html>

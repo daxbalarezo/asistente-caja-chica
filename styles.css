@@ -1,0 +1,371 @@
+/* --- Variables y Estilos Base --- */
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+    --background-color: #ffffff;
+    --text-color: #212529;
+    --border-color: #dee2e6;
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    --border-radius: 8px;
+}
+
+[data-theme="dark"] {
+    --primary-color: #3b82f6;
+    --secondary-color: #9ca3af;
+    --background-color: #1f2937;
+    --text-color: #f9fafb;
+    --border-color: #4b5563;
+    --light-color: #374151;
+    --dark-color: #f9fafb;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    margin: 0;
+    transition: background-color 0.3s, color 0.3s;
+    line-height: 1.6;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main {
+    flex-grow: 1;
+    padding: 2rem;
+}
+
+/* --- Cabecera y Navegación --- */
+.app-header {
+    background-color: var(--light-color);
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--box-shadow);
+}
+.app-header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+}
+.header-logo {
+    height: 40px; /* Puedes ajustar el tamaño si lo necesitas */
+    vertical-align: middle;
+    margin-right: 15px;
+}
+.app-header nav a {
+    color: var(--text-color);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    transition: background-color 0.2s;
+}
+.app-header nav a:hover, .app-header nav a.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+.settings-menu {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* --- Pie de Página --- */
+.app-footer {
+    text-align: center;
+    padding: 1rem;
+    background-color: var(--light-color);
+    border-top: 1px solid var(--border-color);
+    font-size: 0.9rem;
+    color: var(--secondary-color);
+}
+
+/* --- Componentes UI --- */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.page-header h2 {
+    margin: 0;
+}
+
+.card {
+    background-color: var(--light-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    box-shadow: var(--box-shadow);
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.kpi-card h3 {
+    margin-top: 0;
+    color: var(--primary-color);
+}
+.kpi-card p {
+    margin: 0.5rem 0;
+    font-size: 1.2rem;
+}
+.kpi-card .difference {
+    font-weight: bold;
+}
+.difference.positive { color: var(--success-color); }
+.difference.negative { color: var(--danger-color); }
+.difference.zero { color: var(--secondary-color); }
+
+
+/* --- Formularios --- */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+.form-group label {
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+.form-group input, .form-group select, .form-group textarea {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-size: 1rem;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+.form-actions {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+/* --- Botones --- */
+button, .btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    transition: opacity 0.2s;
+}
+button:hover, .btn:hover {
+    opacity: 0.85;
+}
+.btn-primary { background-color: var(--primary-color); color: white; }
+.btn-secondary { background-color: var(--secondary-color); color: white; }
+.btn-danger { background-color: var(--danger-color); color: white; }
+.btn-success { background-color: var(--success-color); color: white; }
+.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+
+#theme-toggle {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+/* --- Tablas --- */
+.table-container {
+    overflow-x: auto;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+th, td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+thead {
+    background-color: var(--light-color);
+}
+td .actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* --- Filtros --- */
+.filters {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1rem;
+    background-color: var(--light-color);
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+}
+.filters input, .filters select {
+    padding: 0.5rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+
+/* --- Modal --- */
+.modal-container {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.modal-content {
+    background-color: var(--background-color);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    width: 90%;
+    max-width: 700px;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.modal-close-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    color: var(--secondary-color);
+    font-size: 2rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* --- Dropdown (Ajustes) --- */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+.dropdown-btn {
+    background-color: var(--secondary-color);
+    color: white;
+}
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: var(--light-color);
+    min-width: 160px;
+    box-shadow: var(--box-shadow);
+    z-index: 1;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+.dropdown-content a, .dropdown-content .import-label {
+    color: var(--text-color);
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    cursor: pointer;
+}
+.dropdown-content a:hover, .dropdown-content .import-label:hover {
+    background-color: var(--border-color);
+}
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+/* --- Estilos de Impresión --- */
+@media print {
+    body {
+        background-color: #fff;
+        color: #000;
+    }
+    .no-print {
+        display: none !important;
+    }
+    main {
+        padding: 0;
+    }
+    .print-area {
+        display: block !important;
+        box-shadow: none;
+        border: none;
+    }
+    .print-header {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 2rem;
+        border-bottom: 2px solid #000;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+    }
+    .print-header img {
+        height: 60px;
+    }
+    .print-header h1 {
+        margin: 0;
+    }
+    .print-header p {
+        margin: 0;
+    }
+    table {
+        font-size: 10pt;
+    }
+    th, td {
+        padding: 0.5rem;
+        border: 1px solid #ccc;
+    }
+    thead {
+        background-color: #eee;
+    }
+    .print-summary {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 2px solid #000;
+        float: right;
+        width: 300px;
+        text-align: right;
+    }
+    .print-summary p {
+        font-size: 12pt;
+        margin: 0.5rem 0;
+    }
+    @page {
+        size: A4;
+        margin: 2cm;
+    }
+}
