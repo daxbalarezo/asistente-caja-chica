@@ -1,4 +1,4 @@
-// Este es el nuevo archivo: ui/auth.js
+// ui/auth.js (Versión Corregida)
 
 import { db } from '../db.js';
 
@@ -17,40 +17,44 @@ export function renderAuth(container) {
                     <label for="password">Contraseña</label>
                     <input type="password" id="password" name="password" required>
                 </div>
-                <div id="auth-error" style="color:red; margin-bottom:1rem;"></div>
+                <div id="auth-error" style="color:red; margin-bottom:1rem; min-height: 1.2em;"></div>
                 <div class="form-actions">
-                    <button type="submit" id="login-btn" class="btn btn-primary">Iniciar Sesión</button>
+                    <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
                     <button type="button" id="register-btn" class="btn btn-secondary">Registrarse</button>
                 </div>
             </form>
         </div>
+        <style>
+            .auth-container { max-width: 400px; margin: 3rem auto; }
+        </style>
     `;
 
     const form = document.getElementById('auth-form');
-    const loginBtn = document.getElementById('login-btn');
     const registerBtn = document.getElementById('register-btn');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const errorDiv = document.getElementById('auth-error');
 
-    // Event listener para el botón de Login
-    loginBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
+    // --- CAMBIO IMPORTANTE: Escuchamos el evento 'submit' del formulario ---
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault(); // Prevenimos la recarga de la página
         errorDiv.textContent = '';
+        
         const { error } = await db.auth.signInWithPassword({
             email: emailInput.value,
             password: passwordInput.value,
         });
 
         if (error) {
-            errorDiv.textContent = 'Error: ' + error.message;
+            errorDiv.textContent = 'Email o contraseña incorrectos.'; // Mensaje más amigable
+            console.error('Error de inicio de sesión:', error.message);
         } else {
             window.location.hash = '/'; // Redirige al dashboard
             window.location.reload(); // Recarga para que el router nos lleve
         }
     });
 
-    // Event listener para el botón de Registro
+    // El botón de registro sigue funcionando con un 'click' porque no es de tipo 'submit'
     registerBtn.addEventListener('click', async () => {
         errorDiv.textContent = '';
         if (confirm('¿Seguro que quieres registrar este nuevo usuario?')) {
@@ -62,7 +66,7 @@ export function renderAuth(container) {
             if (error) {
                 errorDiv.textContent = 'Error: ' + error.message;
             } else {
-                alert('¡Registro exitoso! Por favor, inicia sesión.');
+                alert('¡Registro exitoso! Por favor, revisa tu correo para confirmar la cuenta e inicia sesión.');
             }
         }
     });
