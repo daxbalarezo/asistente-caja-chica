@@ -34,18 +34,16 @@ async function loadDesembolsosTable() {
     const listContainer = document.getElementById('desembolsos-list');
     listContainer.innerHTML = 'Cargando...';
 
-    // Construimos la consulta a Supabase
     let query = db.from(TABLE_NAME).select(`
         *,
         empresas ( nombre )
     `).order('fecha', { ascending: false });
 
-    // Aplicar filtros
     const empresaFilter = document.getElementById('empresa-filter').value;
     const startDateFilter = document.getElementById('start-date-filter').value;
     const endDateFilter = document.getElementById('end-date-filter').value;
 
-    if (empresaFilter) query = query.eq('empresaId', empresaFilter);
+    if (empresaFilter) query = query.eq('"empresaId"', empresaFilter);
     if (startDateFilter) query = query.gte('fecha', startDateFilter);
     if (endDateFilter) query = query.lte('fecha', endDateFilter);
     
@@ -53,20 +51,18 @@ async function loadDesembolsosTable() {
 
     if (error) {
         console.error("Error al cargar desembolsos:", error);
-        listContainer.innerHTML = "<p>Error al cargar desembolsos desde la nube.</p>";
+        listContainer.innerHTML = "<p>Error al cargar desembolsos.</p>";
         return;
     }
 
-    const headers = ['Fecha', 'Empresa', 'Responsable', 'Monto', 'Descripción', 'Captura', 'Acciones'];
+    const headers = ['Fecha', 'Empresa', 'N° Req.', 'Responsable', 'Monto', 'Descripción', 'Acciones'];
     const dataRows = desembolsos.map(d => [
         new Date(d.fecha).toLocaleDateString(),
         d.empresas.nombre || 'N/A',
+        d.numero_requerimiento || '',
         d.responsable,
         formatCurrency(d.monto, d.moneda),
         d.descripcion,
-        d.imagenDataUrl 
-            ? `<a href="${d.imagenDataUrl}" download="desembolso-${d.fecha}.png" class="btn btn-secondary btn-sm">Descargar</a>` 
-            : 'No hay',
         `<div class="actions">
             <button class="btn btn-secondary btn-sm edit-btn" data-id="${d.id}">✏️</button>
             <button class="btn btn-danger btn-sm delete-btn" data-id="${d.id}">🗑️</button>
@@ -112,6 +108,10 @@ async function showDesembolsoForm(desembolso = null) {
                     </select>
                 </div>
                 <div class="form-group">
+                    <label for="numero_requerimiento">N° Requerimiento</label>
+                    <input type="text" name="numero_requerimiento" value="${desembolso?.numero_requerimiento || ''}">
+                </div>
+                <div class="form-group">
                     <label for="responsable">Responsable</label>
                     <input type="text" name="responsable" value="${desembolso?.responsable || ''}" required>
                 </div>
@@ -124,16 +124,13 @@ async function showDesembolsoForm(desembolso = null) {
                     <select name="medioPago">
                         <option value="efectivo" ${desembolso?.medioPago === 'efectivo' ? 'selected' : ''}>Efectivo</option>
                         <option value="transferencia" ${desembolso?.medioPago === 'transferencia' ? 'selected' : ''}>Transferencia</option>
+                        <option value="yape" ${desembolso?.medioPago === 'yape' ? 'selected' : ''}>Yape</option>
                         <option value="otro" ${desembolso?.medioPago === 'otro' ? 'selected' : ''}>Otro</option>
                     </select>
                 </div>
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label for="descripcion">Descripción</label>
                     <textarea name="descripcion">${desembolso?.descripcion || ''}</textarea>
-                </div>
-                <div class="form-group" style="grid-column: 1 / -1;">
-                    <label for="imagen">Captura del Desembolso (Opcional)</label>
-                    <input type="file" id="imagen" name="imagen" accept="image/*">
                 </div>
             </div>
             <div class="form-actions">
@@ -148,28 +145,15 @@ async function showDesembolsoForm(desembolso = null) {
         e.preventDefault();
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData.entries());
-        delete data.imagen;
         
-        const fileInput = document.getElementById('imagen');
-        const readFileAsDataURL = (file) => new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = error => reject(error);
-            reader.readAsDataURL(file);
-        });
-
         try {
-            if (fileInput.files.length > 0) {
-                data.imagenDataUrl = await readFileAsDataURL(fileInput.files[0]);
-            }
-
             if (data.id) {
                 const id = data.id;
                 delete data.id;
                 await db.from(TABLE_NAME).update(data).eq('id', id);
             } else {
                 delete data.id;
-                await db.from(TABLE_NAME).insert(data);
+                await db.from(TABLE_NAME).insert([data]);
             }
             hideModal();
             await loadDesembolsosTable();
