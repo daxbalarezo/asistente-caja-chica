@@ -55,14 +55,16 @@ async function loadDesembolsosTable() {
         return;
     }
 
-    const headers = ['Fecha', 'Empresa', 'N° Req.', 'Responsable', 'Monto', 'Descripción', 'Acciones'];
+    const headers = ['Fecha', 'Empresa', 'N° Req.', 'Responsable', 'Monto', 'Comprobante', 'Acciones'];
     const dataRows = desembolsos.map(d => [
         new Date(d.fecha).toLocaleDateString(),
         d.empresas.nombre || 'N/A',
         d.numero_requerimiento || '',
         d.responsable,
         formatCurrency(d.monto, d.moneda),
-        d.descripcion,
+        d.imagenDataUrl 
+            ? `<a href="${d.imagenDataUrl}" download="desembolso-${d.id}.png" class="btn btn-secondary btn-sm">Ver</a>` 
+            : 'No hay',
         `<div class="actions">
             <button class="btn btn-secondary btn-sm edit-btn" data-id="${d.id}">✏️</button>
             <button class="btn btn-danger btn-sm delete-btn" data-id="${d.id}">🗑️</button>
@@ -132,6 +134,10 @@ async function showDesembolsoForm(desembolso = null) {
                     <label for="descripcion">Descripción</label>
                     <textarea name="descripcion">${desembolso?.descripcion || ''}</textarea>
                 </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="imagen">Comprobante (Obligatorio)</label>
+                    <input type="file" id="imagen" name="imagen" accept="image/*">
+                </div>
             </div>
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="hideModal()">Cancelar</button>
@@ -145,8 +151,23 @@ async function showDesembolsoForm(desembolso = null) {
         e.preventDefault();
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData.entries());
-        
+        delete data.imagen;
+
+        const fileInput = document.getElementById('imagen');
+        const readFileAsDataURL = (file) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+        });
+
         try {
+            if (fileInput.files.length > 0) {
+                data.imagenDataUrl = await readFileAsDataURL(fileInput.files[0]);
+            } else if (!data.id) {
+                 data.imagenDataUrl = null;
+            }
+
             if (data.id) {
                 const id = data.id;
                 delete data.id;
@@ -163,3 +184,4 @@ async function showDesembolsoForm(desembolso = null) {
         }
     });
 }
+

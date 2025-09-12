@@ -55,15 +55,18 @@ async function loadRendicionesTable() {
         return;
     }
 
-    const headers = ['Fecha', 'Empresa', 'N° Req.', 'Proveedor', 'RUC', 'Documento', 'Monto', 'Acciones'];
+    const headers = ['Fecha', 'Empresa', 'N° Req.', 'Proveedor', 'RUC', 'Documento', 'Monto', 'Comprobante', 'Acciones'];
     const dataRows = rendiciones.map(r => [
         new Date(r.fecha).toLocaleDateString(),
         r.empresas.nombre || 'N/A',
         r.numero_requerimiento || '',
         r.proveedor,
         r.ruc_proveedor || '',
-        `${r.documento.tipo} ${r.documento.numero}`,
+        r.documento && r.documento.tipo ? `${r.documento.tipo} ${r.documento.numero}` : '',
         formatCurrency(r.monto),
+        r.imagenDataUrl 
+            ? `<a href="${r.imagenDataUrl}" download="rendicion-${r.id}.png" class="btn btn-secondary btn-sm">Ver</a>` 
+            : 'No hay',
         `<div class="actions">
             <button class="btn btn-secondary btn-sm edit-btn" data-id="${r.id}">✏️</button>
             <button class="btn btn-danger btn-sm delete-btn" data-id="${r.id}">🗑️</button>
@@ -137,6 +140,10 @@ async function showRendicionForm(rendicion = null) {
                     <label for="monto">Monto</label>
                     <input type="number" name="monto" step="0.01" min="0.01" value="${rendicion?.monto || ''}" required>
                 </div>
+                 <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="imagen">Comprobante (Obligatorio)</label>
+                    <input type="file" id="imagen" name="imagen" accept="image/*">
+                </div>
             </div>
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="hideModal()">Cancelar</button>
@@ -149,6 +156,7 @@ async function showRendicionForm(rendicion = null) {
     document.getElementById('rendicion-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
+        
         const data = {
             id: formData.get('id') || undefined,
             fecha: formData.get('fecha'),
@@ -160,10 +168,23 @@ async function showRendicionForm(rendicion = null) {
             documento: {
                 tipo: formData.get('documento_tipo'),
                 numero: formData.get('documento_numero')
-            }
+            },
+            imagenDataUrl: rendicion?.imagenDataUrl || null
         };
+        
+        const fileInput = document.getElementById('imagen');
+        const readFileAsDataURL = (file) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+        });
 
         try {
+            if (fileInput.files.length > 0) {
+                data.imagenDataUrl = await readFileAsDataURL(fileInput.files[0]);
+            }
+
             if (data.id) {
                 const id = data.id;
                 delete data.id;
@@ -180,3 +201,4 @@ async function showRendicionForm(rendicion = null) {
         }
     });
 }
+
