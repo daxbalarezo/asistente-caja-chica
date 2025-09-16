@@ -1,5 +1,5 @@
 import { db } from '../db.js';
-import { showModal, hideModal, createTable, formatCurrency } from './components.js';
+import { showModal, hideModal, createTable, formatCurrency, formatDateWithTimezone } from './components.js';
 
 const TABLE_NAME = 'desembolsos';
 
@@ -57,7 +57,7 @@ async function loadDesembolsosTable() {
 
     const headers = ['Fecha', 'Empresa', 'N° Req.', 'Responsable', 'Monto', 'Comprobante', 'Acciones'];
     const dataRows = desembolsos.map(d => [
-        new Date(d.fecha).toLocaleDateString(),
+        formatDateWithTimezone(d.fecha),
         d.empresas.nombre || 'N/A',
         d.numero_requerimiento || '',
         d.responsable,
@@ -135,7 +135,7 @@ async function showDesembolsoForm(desembolso = null) {
                     <textarea name="descripcion">${desembolso?.descripcion || ''}</textarea>
                 </div>
                 <div class="form-group" style="grid-column: 1 / -1;">
-                    <label for="imagen">Comprobante (Obligatorio)</label>
+                    <label for="imagen">Comprobante (Opcional)</label>
                     <input type="file" id="imagen" name="imagen" accept="image/*">
                 </div>
             </div>
@@ -152,6 +152,7 @@ async function showDesembolsoForm(desembolso = null) {
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData.entries());
         delete data.imagen;
+        data.monto = parseFloat(data.monto);
 
         const fileInput = document.getElementById('imagen');
         const readFileAsDataURL = (file) => new Promise((resolve, reject) => {
@@ -164,8 +165,8 @@ async function showDesembolsoForm(desembolso = null) {
         try {
             if (fileInput.files.length > 0) {
                 data.imagenDataUrl = await readFileAsDataURL(fileInput.files[0]);
-            } else if (!data.id) {
-                 data.imagenDataUrl = null;
+            } else if (desembolso && desembolso.imagenDataUrl) {
+                data.imagenDataUrl = desembolso.imagenDataUrl;
             }
 
             if (data.id) {
@@ -184,4 +185,3 @@ async function showDesembolsoForm(desembolso = null) {
         }
     });
 }
-

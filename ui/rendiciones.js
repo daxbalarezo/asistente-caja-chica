@@ -1,5 +1,5 @@
 import { db } from '../db.js';
-import { showModal, hideModal, createTable, formatCurrency } from './components.js';
+import { showModal, hideModal, createTable, formatCurrency, formatDateWithTimezone } from './components.js';
 
 const TABLE_NAME = 'rendiciones';
 
@@ -57,12 +57,12 @@ async function loadRendicionesTable() {
 
     const headers = ['Fecha', 'Empresa', 'N° Req.', 'Proveedor', 'RUC', 'Documento', 'Monto', 'Comprobante', 'Acciones'];
     const dataRows = rendiciones.map(r => [
-        new Date(r.fecha).toLocaleDateString(),
+        formatDateWithTimezone(r.fecha),
         r.empresas.nombre || 'N/A',
         r.numero_requerimiento || '',
         r.proveedor,
         r.ruc_proveedor || '',
-        r.documento && r.documento.tipo ? `${r.documento.tipo} ${r.documento.numero}` : '',
+        r.documento && r.documento.tipo ? `${r.documento.tipo.toUpperCase()} ${r.documento.numero}` : '',
         formatCurrency(r.monto),
         r.imagenDataUrl 
             ? `<a href="${r.imagenDataUrl}" download="rendicion-${r.id}.png" class="btn btn-secondary btn-sm">Ver</a>` 
@@ -141,7 +141,7 @@ async function showRendicionForm(rendicion = null) {
                     <input type="number" name="monto" step="0.01" min="0.01" value="${rendicion?.monto || ''}" required>
                 </div>
                  <div class="form-group" style="grid-column: 1 / -1;">
-                    <label for="imagen">Comprobante (Obligatorio)</label>
+                    <label for="imagen">Comprobante (Opcional)</label>
                     <input type="file" id="imagen" name="imagen" accept="image/*">
                 </div>
             </div>
@@ -156,23 +156,19 @@ async function showRendicionForm(rendicion = null) {
     document.getElementById('rendicion-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
-        
-        const data = {
-            id: formData.get('id') || undefined,
-            fecha: formData.get('fecha'),
-            empresaId: formData.get('empresaId'),
-            numero_requerimiento: formData.get('numero_requerimiento'),
-            proveedor: formData.get('proveedor'),
-            ruc_proveedor: formData.get('ruc_proveedor'),
-            monto: parseFloat(formData.get('monto')),
-            documento: {
-                tipo: formData.get('documento_tipo'),
-                numero: formData.get('documento_numero')
-            },
-            imagenDataUrl: rendicion?.imagenDataUrl || null
-        };
-        
         const fileInput = document.getElementById('imagen');
+        
+        const data = Object.fromEntries(formData.entries());
+
+        data.monto = parseFloat(data.monto);
+        data.documento = {
+            tipo: data.documento_tipo,
+            numero: data.documento_numero
+        };
+        delete data.documento_tipo;
+        delete data.documento_numero;
+        delete data.imagen;
+        
         const readFileAsDataURL = (file) => new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result);
@@ -183,22 +179,27 @@ async function showRendicionForm(rendicion = null) {
         try {
             if (fileInput.files.length > 0) {
                 data.imagenDataUrl = await readFileAsDataURL(fileInput.files[0]);
+            } else if (rendicion && rendicion.imagenDataUrl) {
+                data.imagenDataUrl = rendicion.imagenDataUrl;
             }
 
             if (data.id) {
                 const id = data.id;
                 delete data.id;
-                await db.from(TABLE_NAME).update(data).eq('id', id);
+                const { error } = await db.from(TABLE_NAME).update(data).eq('id', id);
+                if (error) throw error;
             } else {
                 delete data.id;
-                await db.from(TABLE_NAME).insert([data]);
+                const { error } = await db.from(TABLE_NAME).insert([data]);
+                if (error) throw error;
             }
+
             hideModal();
             await loadRendicionesTable();
+
         } catch (error) {
             console.error("Error al guardar rendición:", error);
-            alert("Error al guardar la rendición.");
+            alert("Error al guardar la rendición: " + error.message);
         }
     });
 }
-

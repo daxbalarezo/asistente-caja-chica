@@ -1,5 +1,5 @@
-import { db } from '../db.js'; // Usamos el cliente de Supabase
-import { createTable, formatCurrency, showModal, hideModal } from './components.js';
+import { db } from '../db.js';
+import { createTable, formatCurrency, showModal, hideModal, formatDateWithTimezone } from './components.js';
 
 export async function renderDashboard(container) {
     container.innerHTML = `
@@ -11,10 +11,6 @@ export async function renderDashboard(container) {
     const grid = document.getElementById('dashboard-grid');
 
     try {
-        // --- NOTA IMPORTANTE DE SEGURIDAD ---
-        // Gracias a las políticas de RLS, las siguientes llamadas a la base de datos
-        // ya vienen filtradas. Un usuario 'user' solo recibirá las empresas
-        // y los datos a los que explícitamente tiene permiso. Un 'admin' recibirá todo.
         const { data: empresas } = await db.from('empresas').select('*');
         const { data: desembolsos } = await db.from('desembolsos').select('"empresaId", monto');
         const { data: rendiciones } = await db.from('rendiciones').select('"empresaId", monto');
@@ -54,7 +50,6 @@ export async function renderDashboard(container) {
 
 
 export async function renderCuadre(container) {
-    // La RLS filtra automáticamente las empresas que el usuario puede ver.
     const { data: empresas } = await db.from('empresas').select('*');
     container.innerHTML = `
         <div class="page-header no-print">
@@ -78,7 +73,6 @@ export async function renderCuadre(container) {
     document.getElementById('print-report-btn').addEventListener('click', handlePrint);
 }
 
-// Guarda los datos del reporte generado para poder imprimirlo después.
 let currentReportData = null;
 
 async function generateReportPreview() {
@@ -114,7 +108,6 @@ async function generateReportPreview() {
         const { data: desembolsos } = await desembolsosQuery;
         const { data: rendiciones } = await rendicionesQuery;
 
-        // Guarda los datos para la impresión
         currentReportData = { empresa, desembolsos, rendiciones, startDate, endDate };
 
         const reportHtml = generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDate, '(Vista Previa)');
@@ -132,21 +125,9 @@ async function handlePrint() {
         alert("Primero debe generar una vista previa del reporte.");
         return;
     }
-
     const { empresa, desembolsos, rendiciones, startDate, endDate } = currentReportData;
     const container = document.getElementById('report-container');
-
     try {
-        const { data: { session }, error: sessionError } = await db.auth.getSession();
-        if (sessionError) throw sessionError;
-        if (!session) throw new Error("Usuario no autenticado.");
-        const currentUser = session.user;
-        
-        // 1. Obtener y actualizar el correlativo
-        // --- CORRECCIÓN FINAL APLICADA AQUÍ ---
-        const { data: perfil, error: perfilError } = await db.from('profiles').select('role').eq('id', currentUser.id).single();
-        if (perfilError) throw perfilError;
-        
         const { data: empresaData, error: empresaError } = await db.from('empresas').select('correlativo_reporte, prefijo_reporte').eq('id', empresa.id).single();
         if (empresaError) throw empresaError;
         
@@ -154,14 +135,11 @@ async function handlePrint() {
         const anio = new Date().getFullYear();
         const correlativoFormateado = `${empresaData.prefijo_reporte || 'REP'}-${anio}-${String(nuevoCorrelativo).padStart(3, '0')}`;
         
-        // 2. Actualizar el HTML con el correlativo final
         container.innerHTML = generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDate, correlativoFormateado);
 
-        // 3. Abrir diálogo de impresión
         setTimeout(() => {
             window.print();
             
-            // 4. Mostrar confirmación DESPUÉS de imprimir
             setTimeout(() => {
                 showModal('Confirmar Impresión', `
                     <p>¿Se imprimió el reporte con el correlativo <strong>${correlativoFormateado}</strong> correctamente?</p>
@@ -178,12 +156,11 @@ async function handlePrint() {
                     hideModal();
                 };
                 document.getElementById('confirm-print-no').onclick = () => {
-                     // Al cancelar, volvemos a mostrar la vista previa sin el correlativo
                     container.innerHTML = generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDate, '(Vista Previa)');
                     hideModal();
                 };
 
-            }, 500); // Pequeña espera para que el diálogo de impresión no bloquee la alerta
+            }, 500);
         }, 100);
 
     } catch (error) {
@@ -198,11 +175,11 @@ function generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDat
     const totalRendido = rendiciones.reduce((sum, r) => sum + r.monto, 0);
     const diferencia = totalDesembolsado - totalRendido;
 
-    const desembolsosHeaders = ['Fecha', 'Responsable', 'Descripción', 'Monto'];
-    const desembolsosRows = desembolsos.map(d => [new Date(d.fecha).toLocaleDateString(), d.responsable, d.descripcion, formatCurrency(d.monto)]);
+    const desembolsosHeaders = ['Fecha', 'N° Req.', 'Responsable', 'Descripción', 'Monto'];
+    const desembolsosRows = desembolsos.map(d => [formatDateWithTimezone(d.fecha), d.numero_requerimiento, d.responsable, d.descripcion, formatCurrency(d.monto)]);
     
-    const rendicionesHeaders = ['Fecha', 'Proveedor', 'Documento', 'Monto'];
-    const rendicionesRows = rendiciones.map(r => [new Date(r.fecha).toLocaleDateString(), r.proveedor, `${r.documento.tipo} ${r.documento.numero}`, formatCurrency(r.monto)]);
+    const rendicionesHeaders = ['Fecha', 'N° Req.', 'Proveedor', 'Documento', 'Monto'];
+    const rendicionesRows = rendiciones.map(r => [formatDateWithTimezone(r.fecha), r.numero_requerimiento, r.proveedor, `${r.documento.tipo} ${r.documento.numero}`, formatCurrency(r.monto)]);
 
     return `
         <div class="print-header">
@@ -210,8 +187,8 @@ function generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDat
             <div>
                 <h1>Reporte de Caja Chica <span class="correlativo-display">${correlativo}</span></h1>
                 <p><strong>Empresa:</strong> ${empresa.nombre}</p>
-                <p><strong>Periodo:</strong> ${startDate || 'Inicio'} al ${endDate || 'Fin'}</p>
-                <p><strong>Fecha de Reporte:</strong> ${new Date().toLocaleDateString()}</p>
+                <p><strong>Periodo:</strong> ${startDate ? formatDateWithTimezone(startDate) : 'Inicio'} al ${endDate ? formatDateWithTimezone(endDate) : 'Fin'}</p>
+                <p><strong>Fecha de Reporte:</strong> ${formatDateWithTimezone(new Date().toISOString().slice(0,10))}</p>
             </div>
         </div>
 
@@ -229,4 +206,3 @@ function generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDat
         </div>
     `;
 }
-
