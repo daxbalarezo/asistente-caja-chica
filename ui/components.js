@@ -43,3 +43,26 @@ export function createTable(headers, dataRows) {
 export const formatCurrency = (amount, currency = 'PEN') => {
     return new Intl.NumberFormat('es-PE', { style: 'currency', currency }).format(amount);
 };
+// En ui/components.js, AÑADE ESTA FUNCIÓN AL FINAL
+
+/**
+ * Formatea una fecha de tipo string 'YYYY-MM-DD' a una fecha local,
+ * corrigiendo el problema de la zona horaria (UTC).
+ * @param {string} dateString La fecha en formato 'YYYY-MM-DD'.
+ * @returns {string} La fecha formateada en el idioma local (ej. "dd/mm/yyyy").
+ */
+export function formatDateWithTimezone(dateString) {
+    if (!dateString) return '';
+    // Creamos un objeto de fecha, que JavaScript interpretará como UTC a la medianoche.
+    const date = new Date(dateString);
+    // Obtenemos el desfase de la zona horaria del usuario en minutos y lo convertimos a milisegundos.
+    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+    // Creamos una nueva fecha sumando el desfase, lo que efectivamente "corrige" la fecha a la zona horaria local.
+    const correctedDate = new Date(date.getTime() + userTimezoneOffset);
+    // Devolvemos la fecha formateada en un formato local estándar.
+    return correctedDate.toLocaleDateString('es-PE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
