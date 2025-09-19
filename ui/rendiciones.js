@@ -55,13 +55,13 @@ async function loadRendicionesTable() {
         return;
     }
 
-    const headers = ['Fecha', 'Empresa', 'N° Req.', 'Proveedor', 'RUC', 'Documento', 'Monto', 'Comprobante', 'Acciones'];
+    const headers = ['Fecha', 'Empresa', 'N° Req.', 'Proveedor', 'Descripción', 'Documento', 'Monto', 'Comprobante', 'Acciones'];
     const dataRows = rendiciones.map(r => [
         formatDateWithTimezone(r.fecha),
         r.empresas.nombre || 'N/A',
         r.numero_requerimiento || '',
         r.proveedor,
-        r.ruc_proveedor || '',
+        r.descripcion || '', // Campo nuevo añadido aquí
         r.documento && r.documento.tipo ? `${r.documento.tipo.toUpperCase()} ${r.documento.numero}` : '',
         formatCurrency(r.monto),
         r.imagenDataUrl 
@@ -100,6 +100,16 @@ async function showRendicionForm(rendicion = null) {
     const formContent = `
         <form id="rendicion-form">
             <input type="hidden" name="id" value="${rendicion?.id || ''}">
+
+            <div class="search-block card">
+                <label for="search-req-input">Buscar por N° de Requerimiento</label>
+                <div class="search-input-group">
+                    <input type="text" id="search-req-input" placeholder="Ej: 001-65">
+                    <button type="button" id="search-req-btn" class="btn btn-secondary btn-sm">Buscar</button>
+                </div>
+                <div id="search-result" class="search-result"></div>
+            </div>
+
             <div class="form-grid">
                 <div class="form-group">
                     <label for="fecha">Fecha</label>
@@ -140,7 +150,11 @@ async function showRendicionForm(rendicion = null) {
                     <label for="monto">Monto</label>
                     <input type="number" name="monto" step="0.01" min="0.01" value="${rendicion?.monto || ''}" required>
                 </div>
-                 <div class="form-group" style="grid-column: 1 / -1;">
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="descripcion">Descripción</label>
+                    <textarea name="descripcion">${rendicion?.descripcion || ''}</textarea>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
                     <label for="imagen">Comprobante (Opcional)</label>
                     <input type="file" id="imagen" name="imagen" accept="image/*">
                 </div>
@@ -152,6 +166,42 @@ async function showRendicionForm(rendicion = null) {
         </form>
     `;
     showModal(isEditing ? 'Editar Rendición' : 'Nueva Rendición', formContent);
+    
+    const searchBtn = document.getElementById('search-req-btn');
+    const searchInput = document.getElementById('search-req-input');
+    const searchResultDiv = document.getElementById('search-result');
+    const form = document.getElementById('rendicion-form');
+
+    searchBtn.addEventListener('click', async () => {
+        const reqNumber = searchInput.value.trim();
+        if (!reqNumber) {
+            alert('Por favor, ingrese un número de requerimiento para buscar.');
+            return;
+        }
+
+        searchResultDiv.textContent = 'Buscando...';
+
+        const { data: desembolso, error } = await db
+            .from('desembolsos')
+            .select('*')
+            .eq('numero_requerimiento', reqNumber)
+            .single();
+
+        if (error || !desembolso) {
+            console.error('Error en la búsqueda o no se encontró:', error);
+            searchResultDiv.textContent = 'No se encontró ningún desembolso con ese N° Req.';
+            searchResultDiv.style.color = 'var(--danger-color)';
+            return;
+        }
+
+        searchResultDiv.textContent = `Desembolso encontrado: ${desembolso.descripcion}`;
+        searchResultDiv.style.color = 'var(--success-color)';
+        
+        form.elements.numero_requerimiento.value = desembolso.numero_requerimiento;
+        form.elements.empresaId.value = desembolso.empresaId;
+        form.elements.proveedor.value = desembolso.responsable;
+        form.elements.monto.value = desembolso.monto;
+    });
 
     document.getElementById('rendicion-form').addEventListener('submit', async (e) => {
         e.preventDefault();

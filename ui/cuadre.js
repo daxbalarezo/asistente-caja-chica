@@ -57,16 +57,20 @@ export async function renderCuadre(container) {
             <button id="print-report-btn" class="btn btn-primary" disabled>🖨️ Imprimir Reporte</button>
         </div>
         <div class="filters card no-print">
+            <p>Filtra por empresa/fecha O por un N° de Requerimiento específico.</p>
             <select id="empresa-filter">
                 <option value="">-- Seleccione una Empresa --</option>
                 ${empresas.map(e => `<option value="${e.id}">${e.nombre}</option>`).join('')}
             </select>
             <input type="date" id="start-date-filter">
             <input type="date" id="end-date-filter">
+            
+            <input type="text" id="req-filter" placeholder="Buscar por N° Req...">
+
             <button id="generate-report" class="btn btn-secondary">Generar Vista Previa</button>
         </div>
         <div id="report-container" class="card print-area">
-            <p>Seleccione una empresa y un rango de fechas para generar el reporte.</p>
+            <p>Seleccione filtros para generar el reporte.</p>
         </div>
     `;
     document.getElementById('generate-report').addEventListener('click', generateReportPreview);
@@ -84,33 +88,55 @@ async function generateReportPreview() {
     const empresaId = document.getElementById('empresa-filter').value;
     const startDate = document.getElementById('start-date-filter').value;
     const endDate = document.getElementById('end-date-filter').value;
+    const reqNumberFilter = document.getElementById('req-filter').value.trim();
 
-    if (!empresaId) {
-        container.innerHTML = '<p>Por favor, seleccione una empresa.</p>';
-        return;
-    }
+    let empresa, desembolsos, rendiciones;
 
     try {
-        const { data: empresa } = await db.from('empresas').select('*').eq('id', empresaId).single();
-        
-        let desembolsosQuery = db.from('desembolsos').select('*').eq('"empresaId"', empresaId);
-        let rendicionesQuery = db.from('rendiciones').select('*').eq('"empresaId"', empresaId);
+        if (reqNumberFilter) {
+            const { data: desembolsosReq, error: desError } = await db.from('desembolsos').select('*, empresas ( * )').eq('numero_requerimiento', reqNumberFilter);
+            if (desError) throw desError;
+            
+            const { data: rendicionesReq, error: renError } = await db.from('rendiciones').select('*').eq('numero_requerimiento', reqNumberFilter);
+            if (renError) throw renError;
 
-        if(startDate) {
-            desembolsosQuery = desembolsosQuery.gte('fecha', startDate);
-            rendicionesQuery = rendicionesQuery.gte('fecha', startDate);
+            if (desembolsosReq.length === 0) {
+                container.innerHTML = '<p>No se encontró ningún desembolso con ese N° de Requerimiento.</p>';
+                return;
+            }
+
+            desembolsos = desembolsosReq;
+            rendiciones = rendicionesReq;
+            empresa = desembolsos[0].empresas;
+
+        } else {
+            if (!empresaId) {
+                container.innerHTML = '<p>Por favor, seleccione una empresa o ingrese un N° de Requerimiento.</p>';
+                return;
+            }
+            const { data: empresaData } = await db.from('empresas').select('*').eq('id', empresaId).single();
+            empresa = empresaData;
+
+            let desembolsosQuery = db.from('desembolsos').select('*').eq('"empresaId"', empresaId);
+            let rendicionesQuery = db.from('rendiciones').select('*').eq('"empresaId"', empresaId);
+
+            if(startDate) {
+                desembolsosQuery = desembolsosQuery.gte('fecha', startDate);
+                rendicionesQuery = rendicionesQuery.gte('fecha', startDate);
+            }
+            if(endDate) {
+                desembolsosQuery = desembolsosQuery.lte('fecha', endDate);
+                rendicionesQuery = rendicionesQuery.lte('fecha', endDate);
+            }
+            const { data: desembolsosData } = await desembolsosQuery;
+            const { data: rendicionesData } = await rendicionesQuery;
+            desembolsos = desembolsosData;
+            rendiciones = rendicionesData;
         }
-        if(endDate) {
-            desembolsosQuery = desembolsosQuery.lte('fecha', endDate);
-            rendicionesQuery = rendicionesQuery.lte('fecha', endDate);
-        }
 
-        const { data: desembolsos } = await desembolsosQuery;
-        const { data: rendiciones } = await rendicionesQuery;
+        currentReportData = { empresa, desembolsos, rendiciones, startDate, endDate, reqNumber: reqNumberFilter };
 
-        currentReportData = { empresa, desembolsos, rendiciones, startDate, endDate };
-
-        const reportHtml = generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDate, '(Vista Previa)');
+        const reportHtml = generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDate, '(Vista Previa)', reqNumberFilter);
         container.innerHTML = reportHtml;
         document.getElementById('print-report-btn').disabled = false;
 
@@ -125,7 +151,7 @@ async function handlePrint() {
         alert("Primero debe generar una vista previa del reporte.");
         return;
     }
-    const { empresa, desembolsos, rendiciones, startDate, endDate } = currentReportData;
+    const { empresa, desembolsos, rendiciones, startDate, endDate, reqNumber } = currentReportData;
     const container = document.getElementById('report-container');
     try {
         const { data: empresaData, error: empresaError } = await db.from('empresas').select('correlativo_reporte, prefijo_reporte').eq('id', empresa.id).single();
@@ -135,7 +161,7 @@ async function handlePrint() {
         const anio = new Date().getFullYear();
         const correlativoFormateado = `${empresaData.prefijo_reporte || 'REP'}-${anio}-${String(nuevoCorrelativo).padStart(3, '0')}`;
         
-        container.innerHTML = generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDate, correlativoFormateado);
+        container.innerHTML = generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDate, correlativoFormateado, reqNumber);
 
         setTimeout(() => {
             window.print();
@@ -156,10 +182,9 @@ async function handlePrint() {
                     hideModal();
                 };
                 document.getElementById('confirm-print-no').onclick = () => {
-                    container.innerHTML = generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDate, '(Vista Previa)');
+                    container.innerHTML = generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDate, '(Vista Previa)', reqNumber);
                     hideModal();
                 };
-
             }, 500);
         }, 100);
 
@@ -170,7 +195,7 @@ async function handlePrint() {
 }
 
 
-function generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDate, correlativo) {
+function generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDate, correlativo, reqNumber = '') {
     const totalDesembolsado = desembolsos.reduce((sum, d) => sum + d.monto, 0);
     const totalRendido = rendiciones.reduce((sum, r) => sum + r.monto, 0);
     const diferencia = totalDesembolsado - totalRendido;
@@ -178,8 +203,12 @@ function generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDat
     const desembolsosHeaders = ['Fecha', 'N° Req.', 'Responsable', 'Descripción', 'Monto'];
     const desembolsosRows = desembolsos.map(d => [formatDateWithTimezone(d.fecha), d.numero_requerimiento, d.responsable, d.descripcion, formatCurrency(d.monto)]);
     
-    const rendicionesHeaders = ['Fecha', 'N° Req.', 'Proveedor', 'Documento', 'Monto'];
-    const rendicionesRows = rendiciones.map(r => [formatDateWithTimezone(r.fecha), r.numero_requerimiento, r.proveedor, `${r.documento.tipo} ${r.documento.numero}`, formatCurrency(r.monto)]);
+    const rendicionesHeaders = ['Fecha', 'N° Req.', 'Proveedor', 'Descripción', 'Documento', 'Monto'];
+    const rendicionesRows = rendiciones.map(r => [formatDateWithTimezone(r.fecha), r.numero_requerimiento, r.proveedor, r.descripcion || '', `${r.documento.tipo} ${r.documento.numero}`, formatCurrency(r.monto)]);
+    
+    const periodoHtml = reqNumber
+        ? `<p><strong>Requerimiento N°:</strong> ${reqNumber}</p>`
+        : `<p><strong>Periodo:</strong> ${startDate ? formatDateWithTimezone(startDate) : 'Inicio'} al ${endDate ? formatDateWithTimezone(endDate) : 'Fin'}</p>`;
 
     return `
         <div class="print-header">
@@ -187,7 +216,7 @@ function generateReportHtml(empresa, desembolsos, rendiciones, startDate, endDat
             <div>
                 <h1>Reporte de Caja Chica <span class="correlativo-display">${correlativo}</span></h1>
                 <p><strong>Empresa:</strong> ${empresa.nombre}</p>
-                <p><strong>Periodo:</strong> ${startDate ? formatDateWithTimezone(startDate) : 'Inicio'} al ${endDate ? formatDateWithTimezone(endDate) : 'Fin'}</p>
+                ${periodoHtml}
                 <p><strong>Fecha de Reporte:</strong> ${formatDateWithTimezone(new Date().toISOString().slice(0,10))}</p>
             </div>
         </div>
