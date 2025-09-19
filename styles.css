@@ -201,6 +201,10 @@ button:hover, .btn:hover {
 }
 
 /* --- Tablas --- */
+/* --- Estilo para forzar mayúsculas en tablas --- */
+table th, table td {
+    text-transform: uppercase;
+}
 .table-container {
     overflow-x: auto;
 }
@@ -307,11 +311,36 @@ td .actions {
     display: block;
 }
 
+/* --- Estilos para el bloque de búsqueda --- */
+.search-block {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: var(--background-color);
+}
+.search-input-group {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+.search-input-group input {
+    flex-grow: 1;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+}
+.search-result {
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+    min-height: 1.2em;
+    color: var(--success-color);
+}
+
 /* --- Estilos de Impresión --- */
 @media print {
     body {
         background-color: #fff;
         color: #000;
+        font-size: 10pt;
     }
     .no-print {
         display: none !important;
@@ -342,16 +371,7 @@ td .actions {
     .print-header p {
         margin: 0;
     }
-    table {
-        font-size: 10pt;
-    }
-    th, td {
-        padding: 0.5rem;
-        border: 1px solid #ccc;
-    }
-    thead {
-        background-color: #eee;
-    }
+    
     .print-summary {
         margin-top: 2rem;
         padding-top: 1rem;
@@ -368,65 +388,148 @@ td .actions {
         size: A4;
         margin: 2cm;
     }
+
+    /* --- INICIO DE LA CORRECCIÓN PARA TABLAS EN IMPRESIÓN --- */
+    /* Forzamos a la tabla a comportarse como una tabla y no como tarjetas */
+    table, thead, tbody, tr, th, td {
+        display: revert !important;
+        width: revert !important;
+        padding: revert !important;
+        text-align: revert !important;
+    }
+    thead {
+        display: table-header-group !important; /* Aseguramos que los encabezados se muestren */
+    }
+    tr {
+        page-break-inside: avoid; /* Evitar que una fila se corte entre dos páginas */
+    }
+    th, td {
+        border: 1px solid #ccc !important; /* Añadimos bordes para un look limpio */
+        padding: 0.5rem !important;
+    }
+    td::before {
+        display: none !important; /* Ocultamos las etiquetas de la vista móvil */
+    }
+    /* --- FIN DE LA CORRECCIÓN --- */
 }
 
-/* --- INICIO: Estilos Móviles y Responsivos --- */
-
-.menu-toggle-btn {
-    display: none; /* Oculto por defecto en escritorio */
-    background: none;
-    border: none;
-    font-size: 2rem;
-    cursor: pointer;
-    color: var(--primary-color);
-    z-index: 1001; /* Asegura que esté por encima de otros elementos */
-}
-
+/* =============================================== */
+/* --- ESTILOS PARA MÓVILES (RESPONSIVE DESIGN) --- */
+/* =============================================== */
 @media (max-width: 768px) {
+    
+    main {
+        padding: 1rem;
+    }
+
+    /* --- Cabecera Móvil --- */
     .app-header {
-        padding: 0.5rem 1rem; /* Menos padding en la cabecera móvil */
+        flex-wrap: wrap;
+        padding: 1rem;
     }
 
     .app-header h1 {
-        font-size: 1.2rem; /* Título más pequeño */
+        font-size: 1.2rem;
+    }
+    
+    #mobile-menu-btn {
+        display: block;
+        background: none;
+        border: none;
+        font-size: 2rem;
+        cursor: pointer;
+        color: var(--text-color);
+        order: 3; /* Mueve el botón de ajustes al final */
     }
 
+    .settings-menu {
+        order: 2;
+    }
+    
     .app-header nav {
-        display: none; /* Ocultamos la navegación */
-        position: absolute;
-        top: 0;
-        left: 0;
+        display: none; /* Oculta la navegación por defecto */
         width: 100%;
-        height: 100vh;
-        background-color: var(--background-color);
+        order: 4; /* Se mostrará al final */
         flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        gap: 2rem;
-        z-index: 1000;
+        margin-top: 1rem;
     }
-
-    .app-header nav.is-active {
-        display: flex; /* La mostramos cuando tenga la clase 'is-active' */
+    
+    .app-header nav.active {
+        display: flex; /* Muestra el menú cuando JS añada la clase .active */
     }
 
     .app-header nav a {
-        font-size: 1.5rem;
+        padding: 1rem;
+        text-align: center;
+        border-bottom: 1px solid var(--border-color);
     }
 
-    .menu-toggle-btn {
-        display: block; /* Mostramos el botón hamburguesa */
+    /* --- Layout General Móvil --- */
+    .page-header, .filters {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
     }
 
-    main {
-        padding: 1rem; /* Reducimos el padding en móvil */
+    .dashboard-grid {
+        grid-template-columns: 1fr;
     }
 
-    /* Ocultar menú de ajustes de escritorio y dejar solo el de sesión */
-    .settings-menu .dropdown,
-    .settings-menu #theme-toggle {
-        display: none;
+    /* --- Tablas Responsivas (Transformación a Tarjetas) --- */
+    table {
+        border: 0;
+    }
+    
+    table thead {
+        display: none; /* Ocultamos los encabezados de la tabla */
+    }
+    
+    table tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+    }
+    
+    table td {
+        display: block;
+        text-align: right; /* Alineamos el valor a la derecha */
+        border-bottom: 1px solid var(--border-color);
+        position: relative;
+        padding-left: 50%; /* Espacio para la etiqueta */
+    }
+    
+    table td:last-child {
+        border-bottom: 0;
+    }
+    
+    table td::before {
+        content: attr(data-label); /* Usamos el atributo data-label como etiqueta */
+        position: absolute;
+        left: 0.5rem;
+        width: 45%;
+        padding-right: 0.5rem;
+        font-weight: bold;
+        text-align: left;
+    }
+
+    /* --- Formularios y Modales --- */
+    .modal-content {
+        width: 95%;
+        padding: 1.5rem;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .form-actions button {
+        width: 100%;
     }
 }
 
-/* --- FIN: Estilos Móviles y Responsivos --- */
+/* Ocultar botón de menú en escritorio */
+#mobile-menu-btn {
+    display: none;
+}
