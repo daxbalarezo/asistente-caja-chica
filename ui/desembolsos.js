@@ -62,8 +62,8 @@ async function loadDesembolsosTable() {
         d.numero_requerimiento || '',
         d.responsable,
         formatCurrency(d.monto, d.moneda),
-        d.imagenDataUrl 
-            ? `<a href="${d.imagenDataUrl}" download="desembolso-${d.id}.png" class="btn btn-secondary btn-sm">Ver</a>` 
+        d.imagen_url 
+            ? `<a href="${d.imagen_url}" target="_blank" class="btn btn-secondary btn-sm">Ver</a>` 
             : 'No hay',
         `<div class="actions">
             <button class="btn btn-secondary btn-sm edit-btn" data-id="${d.id}">✏️</button>
@@ -140,7 +140,7 @@ async function showDesembolsoForm(desembolso = null) {
                 </div>
             </div>
             <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="hideModal()">Cancelar</button>
+                <button type="button" class="btn btn-secondary">Cancelar</button>
                 <button type="submit" class="btn btn-primary">${isEditing ? 'Actualizar' : 'Guardar'}</button>
             </div>
         </form>
@@ -154,19 +154,17 @@ async function showDesembolsoForm(desembolso = null) {
         delete data.imagen;
         data.monto = parseFloat(data.monto);
 
+        if (data.numero_requerimiento) {
+            data.numero_requerimiento = data.numero_requerimiento.trim();
+        }
+
         const fileInput = document.getElementById('imagen');
-        const readFileAsDataURL = (file) => new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = error => reject(error);
-            reader.readAsDataURL(file);
-        });
 
         try {
-            if (fileInput.files.length > 0) {
-                data.imagenDataUrl = await readFileAsDataURL(fileInput.files[0]);
-            } else if (desembolso && desembolso.imagenDataUrl) {
-                data.imagenDataUrl = desembolso.imagenDataUrl;
+             if (fileInput.files.length > 0) {
+                // Aquí iría la lógica para subir a Supabase Storage
+            } else if (desembolso && desembolso.imagen_url) {
+                data.imagen_url = desembolso.imagen_url;
             }
 
             if (data.id) {
