@@ -9,12 +9,6 @@
 ## ¿Qué es Asistente de Caja Chica?
 Es una herramienta digital diseñada para simplificar el control de los gastos de caja chica. Permite a los usuarios registrar desembolsos, justificar gastos con rendiciones y generar reportes de cuadre al instante, todo desde una interfaz limpia, segura y accesible desde cualquier dispositivo.
 
-## 📸 Vistazo Rápido
-
-| Dashboard Principal | Vista Móvil Optimizada |
-| :---: | :---: |
-| *[Aquí puedes poner una captura de tu Dashboard]* | *[Aquí una captura de la vista en tu móvil]* |
-
 ## ✨ Características Principales
 
 * 🏢 **Gestión Multi-empresa:** Controla las finanzas de varias empresas desde un solo lugar.
