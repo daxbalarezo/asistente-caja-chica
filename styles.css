@@ -201,6 +201,7 @@ button:hover, .btn:hover {
 }
 
 /* --- Tablas --- */
+/* --- Estilo para forzar mayúsculas en tablas --- */
 table th, table td {
     text-transform: uppercase;
 }
@@ -387,6 +388,9 @@ td .actions {
         size: A4;
         margin: 2cm;
     }
+
+    /* --- INICIO DE LA CORRECCIÓN PARA TABLAS EN IMPRESIÓN --- */
+    /* Forzamos a la tabla a comportarse como una tabla y no como tarjetas */
     table, thead, tbody, tr, th, td {
         display: revert !important;
         width: revert !important;
@@ -406,10 +410,12 @@ td .actions {
     td::before {
         display: none !important; /* Ocultamos las etiquetas de la vista móvil */
     }
-   
+    /* --- FIN DE LA CORRECCIÓN --- */
 }
 
+/* =============================================== */
 /* --- ESTILOS PARA MÓVILES (RESPONSIVE DESIGN) --- */
+/* =============================================== */
 @media (max-width: 768px) {
     
     main {
