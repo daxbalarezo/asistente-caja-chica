@@ -61,11 +61,12 @@ async function loadRendicionesTable() {
         r.empresas.nombre || 'N/A',
         r.numero_requerimiento || '',
         r.proveedor,
-        r.descripcion || '', // Campo nuevo añadido aquí
+        r.descripcion || '',
         r.documento && r.documento.tipo ? `${r.documento.tipo.toUpperCase()} ${r.documento.numero}` : '',
         formatCurrency(r.monto),
-        r.imagenDataUrl 
-            ? `<a href="${r.imagenDataUrl}" download="rendicion-${r.id}.png" class="btn btn-secondary btn-sm">Ver</a>` 
+        // FIX: Botón de descarga con detección de formato
+        (r.imagen_data_url || r.imagenDataUrl || r.imagen)
+            ? `<button class="btn btn-secondary btn-sm download-btn" data-url="${r.imagen_data_url || r.imagenDataUrl || r.imagen}" data-id="${r.id}">📥 Descargar</button>` 
             : 'No hay',
         `<div class="actions">
             <button class="btn btn-secondary btn-sm edit-btn" data-id="${r.id}">✏️</button>
@@ -74,6 +75,15 @@ async function loadRendicionesTable() {
     ]);
 
     listContainer.innerHTML = createTable(headers, dataRows);
+
+    // Agregar event listeners para los botones de descarga
+    listContainer.querySelectorAll('.download-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const url = e.currentTarget.dataset.url;
+            const id = e.currentTarget.dataset.id;
+            downloadImage(url, id);
+        });
+    });
 
     listContainer.querySelectorAll('.edit-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
@@ -91,6 +101,50 @@ async function loadRendicionesTable() {
             }
         });
     });
+}
+
+// Función para detectar el tipo de archivo desde Data URL
+function getFileExtensionFromDataUrl(dataUrl) {
+    // Los Data URLs tienen el formato: data:[mediatype][;base64],data
+    const match = dataUrl.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*;/);
+    if (match && match[1]) {
+        const mimeType = match[1];
+        // Mapear MIME types a extensiones
+        const mimeToExt = {
+            'image/png': 'png',
+            'image/jpeg': 'jpg',
+            'image/jpg': 'jpg',
+            'image/gif': 'gif',
+            'image/webp': 'webp',
+            'application/pdf': 'pdf',
+            'application/msword': 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+            'application/vnd.ms-excel': 'xls',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx'
+        };
+        
+        return mimeToExt[mimeType] || 'bin'; // Si no se reconoce, usar .bin
+    }
+    return 'png'; // Por defecto PNG si no se puede detectar
+}
+
+// Función para descargar imágenes
+function downloadImage(dataUrl, id) {
+    try {
+        // Detectar la extensión correcta
+        const extension = getFileExtensionFromDataUrl(dataUrl);
+        const filename = `rendicion-${id}.${extension}`;
+        
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (error) {
+        console.error('Error al descargar imagen:', error);
+        alert('Error al descargar el comprobante');
+    }
 }
 
 async function showRendicionForm(rendicion = null) {
@@ -156,7 +210,8 @@ async function showRendicionForm(rendicion = null) {
                 </div>
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label for="imagen">Comprobante (Opcional)</label>
-                    <input type="file" id="imagen" name="imagen" accept="image/*">
+                    <input type="file" id="imagen" name="imagen" accept="image/*,application/pdf">
+                    ${rendicion?.imagen_data_url || rendicion?.imagenDataUrl ? '<p style="color: green;">✅ Ya hay un comprobante cargado</p>' : ''}
                 </div>
             </div>
             <div class="form-actions">
@@ -228,9 +283,9 @@ async function showRendicionForm(rendicion = null) {
 
         try {
             if (fileInput.files.length > 0) {
-                data.imagenDataUrl = await readFileAsDataURL(fileInput.files[0]);
-            } else if (rendicion && rendicion.imagenDataUrl) {
-                data.imagenDataUrl = rendicion.imagenDataUrl;
+                data.imagen_data_url = await readFileAsDataURL(fileInput.files[0]);
+            } else if (rendicion && (rendicion.imagen_data_url || rendicion.imagenDataUrl)) {
+                data.imagen_data_url = rendicion.imagen_data_url || rendicion.imagenDataUrl;
             }
 
             if (data.id) {
