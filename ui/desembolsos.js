@@ -4,110 +4,136 @@ import { showModal, hideModal, createTable, formatCurrency, formatDateWithTimezo
 const TABLE_NAME = 'desembolsos';
 
 export async function renderDesembolsos(container) {
-    const { data: empresas, error } = await db.from('empresas').select('id, nombre');
-    if (error) console.error("Error cargando empresas para el filtro:", error);
+    try {
+        const { data: empresas, error } = await db.from('empresas').select('id, nombre');
+        if (error) console.error("Error cargando empresas para el filtro:", error);
 
-    container.innerHTML = `
-        <div class="page-header">
-            <h2>Registro de Desembolsos</h2>
-            <button id="add-desembolso-btn" class="btn btn-primary">➕ Nuevo Desembolso</button>
-        </div>
-        <div class="filters card">
-            <select id="empresa-filter">
-                <option value="">Todas las empresas</option>
-                ${empresas.map(e => `<option value="${e.id}">${e.nombre}</option>`).join('')}
-            </select>
-            <input type="date" id="start-date-filter">
-            <input type="date" id="end-date-filter">
-            <button id="apply-filters" class="btn btn-secondary">Filtrar</button>
-        </div>
-        <div id="desembolsos-list" class="card"></div>
-    `;
+        container.innerHTML = `
+            <div class="page-header">
+                <h2>Registro de Desembolsos</h2>
+                <button id="add-desembolso-btn" class="btn btn-primary">➕ Nuevo Desembolso</button>
+            </div>
+            <div class="filters card">
+                <select id="empresa-filter">
+                    <option value="">Todas las empresas</option>
+                    ${empresas ? empresas.map(e => `<option value="${e.id}">${e.nombre}</option>`).join('') : ''}
+                </select>
+                <input type="date" id="start-date-filter">
+                <input type="date" id="end-date-filter">
+                <button id="apply-filters" class="btn btn-secondary">Filtrar</button>
+            </div>
+            <div id="desembolsos-list" class="card"></div>
+        `;
 
-    await loadDesembolsosTable();
+        await new Promise(resolve => setTimeout(resolve, 0));
 
-    document.getElementById('add-desembolso-btn').addEventListener('click', () => showDesembolsoForm());
-    document.getElementById('apply-filters').addEventListener('click', loadDesembolsosTable);
+        await loadDesembolsosTable();
+
+        const addButton = document.getElementById('add-desembolso-btn');
+        const applyFiltersButton = document.getElementById('apply-filters');
+        
+        if (addButton) {
+            addButton.addEventListener('click', () => showDesembolsoForm());
+        } else {
+            console.warn('Botón add-desembolso-btn no encontrado');
+        }
+        
+        if (applyFiltersButton) {
+            applyFiltersButton.addEventListener('click', loadDesembolsosTable);
+        } else {
+            console.warn('Botón apply-filters no encontrado');
+        }
+
+    } catch (error) {
+        console.error("Error en renderDesembolsos:", error);
+        container.innerHTML = `<p class="error">Error al cargar la página de desembolsos</p>`;
+    }
 }
 
 async function loadDesembolsosTable() {
     const listContainer = document.getElementById('desembolsos-list');
-    listContainer.innerHTML = 'Cargando...';
-
-    let query = db.from(TABLE_NAME).select(`
-        *,
-        empresas ( nombre )
-    `).order('fecha', { ascending: false });
-
-    const empresaFilter = document.getElementById('empresa-filter').value;
-    const startDateFilter = document.getElementById('start-date-filter').value;
-    const endDateFilter = document.getElementById('end-date-filter').value;
-
-    if (empresaFilter) query = query.eq('"empresaId"', empresaFilter);
-    if (startDateFilter) query = query.gte('fecha', startDateFilter);
-    if (endDateFilter) query = query.lte('fecha', endDateFilter);
-    
-    const { data: desembolsos, error } = await query;
-
-    if (error) {
-        console.error("Error al cargar desembolsos:", error);
-        listContainer.innerHTML = "<p>Error al cargar desembolsos.</p>";
+    if (!listContainer) {
+        console.error('Contenedor desembolsos-list no encontrado');
         return;
     }
 
-    const headers = ['Fecha', 'Empresa', 'N° Req.', 'Responsable', 'Monto', 'Comprobante', 'Acciones'];
-    const dataRows = desembolsos.map(d => [
-        formatDateWithTimezone(d.fecha),
-        d.empresas.nombre || 'N/A',
-        d.numero_requerimiento || '',
-        d.responsable,
-        formatCurrency(d.monto, d.moneda),
-        // FIX: Botón de descarga con detección de formato
-        (d.imagen_data_url || d.imagenDataUrl || d.imagen)
-            ? `<button class="btn btn-secondary btn-sm download-btn" data-url="${d.imagen_data_url || d.imagenDataUrl || d.imagen}" data-id="${d.id}">📥 Descargar</button>` 
-            : 'No hay',
-        `<div class="actions">
-            <button class="btn btn-secondary btn-sm edit-btn" data-id="${d.id}">✏️</button>
-            <button class="btn btn-danger btn-sm delete-btn" data-id="${d.id}">🗑️</button>
-        </div>`
-    ]);
+    listContainer.innerHTML = 'Cargando...';
 
-    listContainer.innerHTML = createTable(headers, dataRows);
+    try {
+        let query = db.from(TABLE_NAME).select(`
+            *,
+            empresas ( nombre )
+        `).order('fecha', { ascending: false });
 
-    // Agregar event listeners para los botones de descarga
-    listContainer.querySelectorAll('.download-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const url = e.currentTarget.dataset.url;
-            const id = e.currentTarget.dataset.id;
-            downloadImage(url, id);
+        const empresaFilter = document.getElementById('empresa-filter');
+        const startDateFilter = document.getElementById('start-date-filter');
+        const endDateFilter = document.getElementById('end-date-filter');
+
+        if (empresaFilter && empresaFilter.value) query = query.eq('"empresaId"', empresaFilter.value);
+        if (startDateFilter && startDateFilter.value) query = query.gte('fecha', startDateFilter.value);
+        if (endDateFilter && endDateFilter.value) query = query.lte('fecha', endDateFilter.value);
+        
+        const { data: desembolsos, error } = await query;
+
+        if (error) {
+            console.error("Error al cargar desembolsos:", error);
+            listContainer.innerHTML = "<p class='error'>Error al cargar desembolsos.</p>";
+            return;
+        }
+
+        const headers = ['Fecha', 'Empresa', 'N° Req.', 'Responsable', 'Monto', 'Comprobante', 'Acciones'];
+        const dataRows = desembolsos.map(d => [
+            formatDateWithTimezone(d.fecha),
+            d.empresas?.nombre || 'N/A',
+            d.numero_requerimiento || '',
+            d.responsable,
+            formatCurrency(d.monto, d.moneda),
+            (d.imagen_data_url || d.imagenDataUrl || d.imagen)
+                ? `<button class="btn btn-secondary btn-sm download-btn" data-url="${d.imagen_data_url || d.imagenDataUrl || d.imagen}" data-id="${d.id}">📥 Descargar</button>` 
+                : 'No hay',
+            `<div class="actions">
+                <button class="btn btn-secondary btn-sm edit-btn" data-id="${d.id}">✏️</button>
+                <button class="btn btn-danger btn-sm delete-btn" data-id="${d.id}">🗑️</button>
+            </div>`
+        ]);
+
+        listContainer.innerHTML = createTable(headers, dataRows);
+
+        listContainer.querySelectorAll('.download-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const url = e.currentTarget.dataset.url;
+                const id = e.currentTarget.dataset.id;
+                downloadImage(url, id);
+            });
         });
-    });
 
-    listContainer.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const id = e.currentTarget.dataset.id;
-            const { data: desembolso } = await db.from(TABLE_NAME).select('*').eq('id', id).single();
-            showDesembolsoForm(desembolso);
+        listContainer.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.currentTarget.dataset.id;
+                const { data: desembolso } = await db.from(TABLE_NAME).select('*').eq('id', id).single();
+                showDesembolsoForm(desembolso);
+            });
         });
-    });
 
-    listContainer.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            if (confirm('¿Eliminar este desembolso?')) {
-                await db.from(TABLE_NAME).delete().eq('id', e.currentTarget.dataset.id);
-                await loadDesembolsosTable();
-            }
+        listContainer.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                if (confirm('¿Eliminar este desembolso?')) {
+                    await db.from(TABLE_NAME).delete().eq('id', e.currentTarget.dataset.id);
+                    await loadDesembolsosTable();
+                }
+            });
         });
-    });
+
+    } catch (error) {
+        console.error("Error en loadDesembolsosTable:", error);
+        listContainer.innerHTML = "<p class='error'>Error al cargar los datos.</p>";
+    }
 }
 
-// Función para detectar el tipo de archivo desde Data URL
 function getFileExtensionFromDataUrl(dataUrl) {
-    // Los Data URLs tienen el formato: data:[mediatype][;base64],data
     const match = dataUrl.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*;/);
     if (match && match[1]) {
         const mimeType = match[1];
-        // Mapear MIME types a extensiones
         const mimeToExt = {
             'image/png': 'png',
             'image/jpeg': 'jpg',
@@ -121,15 +147,13 @@ function getFileExtensionFromDataUrl(dataUrl) {
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx'
         };
         
-        return mimeToExt[mimeType] || 'bin'; // Si no se reconoce, usar .bin
+        return mimeToExt[mimeType] || 'bin';
     }
-    return 'png'; // Por defecto PNG si no se puede detectar
+    return 'png';
 }
 
-// Función para descargar imágenes
 function downloadImage(dataUrl, id) {
     try {
-        // Detectar la extensión correcta
         const extension = getFileExtensionFromDataUrl(dataUrl);
         const filename = `desembolso-${id}.${extension}`;
         

@@ -4,112 +4,138 @@ import { showModal, hideModal, createTable, formatCurrency, formatDateWithTimezo
 const TABLE_NAME = 'rendiciones';
 
 export async function renderRendiciones(container) {
-    const { data: empresas, error } = await db.from('empresas').select('id, nombre');
-    if (error) console.error("Error cargando empresas para el filtro:", error);
+    try {
+        const { data: empresas, error } = await db.from('empresas').select('id, nombre');
+        if (error) console.error("Error cargando empresas para el filtro:", error);
 
-    container.innerHTML = `
-        <div class="page-header">
-            <h2>Registro de Rendiciones</h2>
-            <button id="add-rendicion-btn" class="btn btn-primary">➕ Nueva Rendición</button>
-        </div>
-        <div class="filters card">
-            <select id="empresa-filter">
-                <option value="">Todas las empresas</option>
-                ${empresas.map(e => `<option value="${e.id}">${e.nombre}</option>`).join('')}
-            </select>
-            <input type="date" id="start-date-filter">
-            <input type="date" id="end-date-filter">
-            <button id="apply-filters" class="btn btn-secondary">Filtrar</button>
-        </div>
-        <div id="rendiciones-list" class="card"></div>
-    `;
+        container.innerHTML = `
+            <div class="page-header">
+                <h2>Registro de Rendiciones</h2>
+                <button id="add-rendicion-btn" class="btn btn-primary">➕ Nueva Rendición</button>
+            </div>
+            <div class="filters card">
+                <select id="empresa-filter">
+                    <option value="">Todas las empresas</option>
+                    ${empresas ? empresas.map(e => `<option value="${e.id}">${e.nombre}</option>`).join('') : ''}
+                </select>
+                <input type="date" id="start-date-filter">
+                <input type="date" id="end-date-filter">
+                <button id="apply-filters" class="btn btn-secondary">Filtrar</button>
+            </div>
+            <div id="rendiciones-list" class="card"></div>
+        `;
 
-    await loadRendicionesTable();
+        await new Promise(resolve => setTimeout(resolve, 0));
 
-    document.getElementById('add-rendicion-btn').addEventListener('click', () => showRendicionForm());
-    document.getElementById('apply-filters').addEventListener('click', loadRendicionesTable);
+        await loadRendicionesTable();
+
+        const addButton = document.getElementById('add-rendicion-btn');
+        const applyFiltersButton = document.getElementById('apply-filters');
+        
+        if (addButton) {
+            addButton.addEventListener('click', () => showRendicionForm());
+        } else {
+            console.warn('Botón add-rendicion-btn no encontrado');
+        }
+        
+        if (applyFiltersButton) {
+            applyFiltersButton.addEventListener('click', loadRendicionesTable);
+        } else {
+            console.warn('Botón apply-filters no encontrado');
+        }
+
+    } catch (error) {
+        console.error("Error en renderRendiciones:", error);
+        container.innerHTML = `<p class="error">Error al cargar la página de rendiciones</p>`;
+    }
 }
 
 async function loadRendicionesTable() {
     const listContainer = document.getElementById('rendiciones-list');
-    listContainer.innerHTML = 'Cargando...';
-
-    let query = db.from(TABLE_NAME).select(`
-        *,
-        empresas ( nombre )
-    `).order('fecha', { ascending: false });
-
-    const empresaFilter = document.getElementById('empresa-filter').value;
-    const startDateFilter = document.getElementById('start-date-filter').value;
-    const endDateFilter = document.getElementById('end-date-filter').value;
-
-    if (empresaFilter) query = query.eq('"empresaId"', empresaFilter);
-    if (startDateFilter) query = query.gte('fecha', startDateFilter);
-    if (endDateFilter) query = query.lte('fecha', endDateFilter);
-    
-    const { data: rendiciones, error } = await query;
-
-    if (error) {
-        console.error("Error al cargar rendiciones:", error);
-        listContainer.innerHTML = "<p>Error al cargar rendiciones.</p>";
+    if (!listContainer) {
+        console.error('Contenedor rendiciones-list no encontrado');
         return;
     }
 
-    const headers = ['Fecha', 'Empresa', 'N° Req.', 'Proveedor', 'Descripción', 'Documento', 'Monto', 'Comprobante', 'Acciones'];
-    const dataRows = rendiciones.map(r => [
-        formatDateWithTimezone(r.fecha),
-        r.empresas.nombre || 'N/A',
-        r.numero_requerimiento || '',
-        r.proveedor,
-        r.descripcion || '',
-        r.documento && r.documento.tipo ? `${r.documento.tipo.toUpperCase()} ${r.documento.numero}` : '',
-        formatCurrency(r.monto),
-        // FIX: Botón de descarga con detección de formato
-        (r.imagen_data_url || r.imagenDataUrl || r.imagen)
-            ? `<button class="btn btn-secondary btn-sm download-btn" data-url="${r.imagen_data_url || r.imagenDataUrl || r.imagen}" data-id="${r.id}">📥 Descargar</button>` 
-            : 'No hay',
-        `<div class="actions">
-            <button class="btn btn-secondary btn-sm edit-btn" data-id="${r.id}">✏️</button>
-            <button class="btn btn-danger btn-sm delete-btn" data-id="${r.id}">🗑️</button>
-        </div>`
-    ]);
+    listContainer.innerHTML = 'Cargando...';
 
-    listContainer.innerHTML = createTable(headers, dataRows);
+    try {
+        let query = db.from(TABLE_NAME).select(`
+            *,
+            empresas ( nombre )
+        `).order('fecha', { ascending: false });
 
-    // Agregar event listeners para los botones de descarga
-    listContainer.querySelectorAll('.download-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const url = e.currentTarget.dataset.url;
-            const id = e.currentTarget.dataset.id;
-            downloadImage(url, id);
+        const empresaFilter = document.getElementById('empresa-filter');
+        const startDateFilter = document.getElementById('start-date-filter');
+        const endDateFilter = document.getElementById('end-date-filter');
+
+        if (empresaFilter && empresaFilter.value) query = query.eq('"empresaId"', empresaFilter.value);
+        if (startDateFilter && startDateFilter.value) query = query.gte('fecha', startDateFilter.value);
+        if (endDateFilter && endDateFilter.value) query = query.lte('fecha', endDateFilter.value);
+        
+        const { data: rendiciones, error } = await query;
+
+        if (error) {
+            console.error("Error al cargar rendiciones:", error);
+            listContainer.innerHTML = "<p class='error'>Error al cargar rendiciones.</p>";
+            return;
+        }
+
+        const headers = ['Fecha', 'Empresa', 'N° Req.', 'Proveedor', 'Descripción', 'Documento', 'Monto', 'Comprobante', 'Acciones'];
+        const dataRows = rendiciones.map(r => [
+            formatDateWithTimezone(r.fecha),
+            r.empresas?.nombre || 'N/A',
+            r.numero_requerimiento || '',
+            r.proveedor,
+            r.descripcion || '',
+            r.documento && r.documento.tipo ? `${r.documento.tipo.toUpperCase()} ${r.documento.numero}` : '',
+            formatCurrency(r.monto),
+            (r.imagen_data_url || r.imagenDataUrl || r.imagen)
+                ? `<button class="btn btn-secondary btn-sm download-btn" data-url="${r.imagen_data_url || r.imagenDataUrl || r.imagen}" data-id="${r.id}">📥 Descargar</button>` 
+                : 'No hay',
+            `<div class="actions">
+                <button class="btn btn-secondary btn-sm edit-btn" data-id="${r.id}">✏️</button>
+                <button class="btn btn-danger btn-sm delete-btn" data-id="${r.id}">🗑️</button>
+            </div>`
+        ]);
+
+        listContainer.innerHTML = createTable(headers, dataRows);
+
+        listContainer.querySelectorAll('.download-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const url = e.currentTarget.dataset.url;
+                const id = e.currentTarget.dataset.id;
+                downloadImage(url, id);
+            });
         });
-    });
 
-    listContainer.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const id = e.currentTarget.dataset.id;
-            const { data: rendicion } = await db.from(TABLE_NAME).select('*').eq('id', id).single();
-            showRendicionForm(rendicion);
+        listContainer.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.currentTarget.dataset.id;
+                const { data: rendicion } = await db.from(TABLE_NAME).select('*').eq('id', id).single();
+                showRendicionForm(rendicion);
+            });
         });
-    });
 
-    listContainer.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            if (confirm('¿Eliminar esta rendición?')) {
-                await db.from(TABLE_NAME).delete().eq('id', e.currentTarget.dataset.id);
-                await loadRendicionesTable();
-            }
+        listContainer.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                if (confirm('¿Eliminar esta rendición?')) {
+                    await db.from(TABLE_NAME).delete().eq('id', e.currentTarget.dataset.id);
+                    await loadRendicionesTable();
+                }
+            });
         });
-    });
+
+    } catch (error) {
+        console.error("Error en loadRendicionesTable:", error);
+        listContainer.innerHTML = "<p class='error'>Error al cargar los datos.</p>";
+    }
 }
 
-// Función para detectar el tipo de archivo desde Data URL
 function getFileExtensionFromDataUrl(dataUrl) {
-    // Los Data URLs tienen el formato: data:[mediatype][;base64],data
     const match = dataUrl.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*;/);
     if (match && match[1]) {
         const mimeType = match[1];
-        // Mapear MIME types a extensiones
         const mimeToExt = {
             'image/png': 'png',
             'image/jpeg': 'jpg',
@@ -123,15 +149,13 @@ function getFileExtensionFromDataUrl(dataUrl) {
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx'
         };
         
-        return mimeToExt[mimeType] || 'bin'; // Si no se reconoce, usar .bin
+        return mimeToExt[mimeType] || 'bin';
     }
-    return 'png'; // Por defecto PNG si no se puede detectar
+    return 'png';
 }
 
-// Función para descargar imágenes
 function downloadImage(dataUrl, id) {
     try {
-        // Detectar la extensión correcta
         const extension = getFileExtensionFromDataUrl(dataUrl);
         const filename = `rendicion-${id}.${extension}`;
         
