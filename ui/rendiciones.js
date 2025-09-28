@@ -61,11 +61,11 @@ async function loadRendicionesTable() {
         r.empresas.nombre || 'N/A',
         r.numero_requerimiento || '',
         r.proveedor,
-        r.descripcion || '',
+        r.descripcion || '', // Campo nuevo añadido aquí
         r.documento && r.documento.tipo ? `${r.documento.tipo.toUpperCase()} ${r.documento.numero}` : '',
         formatCurrency(r.monto),
-        r.imagen_url 
-            ? `<a href="${r.imagen_url}" target="_blank" class="btn btn-secondary btn-sm">Ver</a>` 
+        r.imagenDataUrl 
+            ? `<a href="${r.imagenDataUrl}" download="rendicion-${r.id}.png" class="btn btn-secondary btn-sm">Ver</a>` 
             : 'No hay',
         `<div class="actions">
             <button class="btn btn-secondary btn-sm edit-btn" data-id="${r.id}">✏️</button>
@@ -160,7 +160,7 @@ async function showRendicionForm(rendicion = null) {
                 </div>
             </div>
             <div class="form-actions">
-                <button type="button" class="btn btn-secondary">Cancelar</button>
+                <button type="button" class="btn btn-secondary" onclick="hideModal()">Cancelar</button>
                 <button type="submit" class="btn btn-primary">${isEditing ? 'Actualizar' : 'Guardar'}</button>
             </div>
         </form>
@@ -228,9 +228,9 @@ async function showRendicionForm(rendicion = null) {
 
         try {
             if (fileInput.files.length > 0) {
-                // Aquí iría la lógica para subir a Supabase Storage
-            } else if (rendicion && rendicion.imagen_url) {
-                data.imagen_url = rendicion.imagen_url;
+                data.imagenDataUrl = await readFileAsDataURL(fileInput.files[0]);
+            } else if (rendicion && rendicion.imagenDataUrl) {
+                data.imagenDataUrl = rendicion.imagenDataUrl;
             }
 
             if (data.id) {
