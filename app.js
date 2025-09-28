@@ -26,6 +26,11 @@ db.auth.onAuthStateChange((event, session) => {
 });
 
 async function router() {
+    if (!appRoot) {
+        console.error('Elemento app-root no encontrado');
+        return;
+    }
+
     // --- LÓGICA DEL ROUTER MEJORADA ---
     let path = window.location.hash.slice(1);
     if (path.startsWith('/')) {
@@ -46,12 +51,18 @@ async function router() {
     const viewRenderer = routes[routeKey] || routes['/'];
     
     try {
-        appRoot.innerHTML = '<h2>Cargando...</h2>';
+        appRoot.innerHTML = '<div class="loading">Cargando...</div>';
         await viewRenderer(appRoot);
         updateUI(currentUser);
     } catch (error) {
         console.error(`Error al renderizar la vista para ${path}:`, error);
-        appRoot.innerHTML = `<p class="error">Error al cargar la página.</p>`;
+        appRoot.innerHTML = `
+            <div class="error-container">
+                <h2>Error al cargar la página</h2>
+                <p>Por favor, recarga la página e intenta nuevamente.</p>
+                <button onclick="window.location.reload()" class="btn btn-primary">Recargar</button>
+            </div>
+        `;
     }
 }
 
@@ -59,6 +70,11 @@ function updateUI(user) {
     const nav = document.querySelector('header nav');
     const settings = document.querySelector('.settings-menu');
     
+    if (!nav || !settings) {
+        console.warn('Elementos de navegación no encontrados');
+        return;
+    }
+
     if (user) {
         nav.style.display = '';
         settings.style.display = 'flex';
@@ -123,36 +139,33 @@ if (menuToggle && nav) {
 }
 // --- FIN: Lógica para el Menú Hamburguesa ---
 
-
 // --- INICIO: Lógica para el Modo Oscuro ---
 const themeToggleBtn = document.getElementById('theme-toggle');
 
 // Función para aplicar el tema guardado al cargar la página
 function applyInitialTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'light'; // 'light' como predeterminado
+    const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     themeToggleBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
 }
 
 // Event listener para el botón que cambia el tema
-themeToggleBtn.addEventListener('click', () => {
-    // 1. Obtener el tema actual del atributo data-theme en la etiqueta <html>
-    let currentTheme = document.documentElement.getAttribute('data-theme');
-    
-    // 2. Cambiar al tema opuesto
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    
-    // 3. Aplicar el nuevo tema al documento
-    document.documentElement.setAttribute('data-theme', newTheme);
-    
-    // 4. Actualizar el ícono del botón
-    themeToggleBtn.textContent = newTheme === 'dark' ? '☀️' : '🌙';
-    
-    // 5. Guardar la preferencia del usuario en el almacenamiento local
-    localStorage.setItem('theme', newTheme);
-});
+if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+        let currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        
+        document.documentElement.setAttribute('data-theme', newTheme);
+        themeToggleBtn.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        localStorage.setItem('theme', newTheme);
+    });
 
-// Llamamos a la función al inicio para establecer el tema correcto
-applyInitialTheme();
+    // Llamamos a la función al inicio para establecer el tema correcto
+    applyInitialTheme();
+}
 // --- FIN: Lógica para el Modo Oscuro ---
 
+// Inicializar el router cuando se carga la página
+document.addEventListener('DOMContentLoaded', () => {
+    router();
+});
