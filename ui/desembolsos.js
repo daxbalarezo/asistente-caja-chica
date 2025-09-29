@@ -88,8 +88,8 @@ async function loadDesembolsosTable() {
             d.numero_requerimiento || '',
             d.responsable,
             formatCurrency(d.monto, d.moneda),
-            (d.imagen_data_url || d.imagenDataUrl || d.imagen)
-                ? `<button class="btn btn-secondary btn-sm download-btn" data-url="${d.imagen_data_url || d.imagenDataUrl || d.imagen}" data-id="${d.id}">📥 Descargar</button>` 
+            d.imagenDataUrl
+                ? `<button class="btn btn-secondary btn-sm download-btn" data-url="${d.imagenDataUrl}" data-id="${d.id}">📥 Descargar</button>` 
                 : 'No hay',
             `<div class="actions">
                 <button class="btn btn-secondary btn-sm edit-btn" data-id="${d.id}">✏️</button>
@@ -215,7 +215,7 @@ async function showDesembolsoForm(desembolso = null) {
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label for="imagen">Comprobante (Opcional)</label>
                     <input type="file" id="imagen" name="imagen" accept="image/*,application/pdf">
-                    ${desembolso?.imagen_data_url || desembolso?.imagenDataUrl ? '<p style="color: green;">✅ Ya hay un comprobante cargado</p>' : ''}
+                    ${desembolso?.imagenDataUrl ? '<p style="color: green;">✅ Ya hay un comprobante cargado</p>' : ''}
                 </div>
             </div>
             <div class="form-actions">
@@ -243,9 +243,9 @@ async function showDesembolsoForm(desembolso = null) {
 
         try {
             if (fileInput.files.length > 0) {
-                data.imagen_data_url = await readFileAsDataURL(fileInput.files[0]);
-            } else if (desembolso && (desembolso.imagen_data_url || desembolso.imagenDataUrl)) {
-                data.imagen_data_url = desembolso.imagen_data_url || desembolso.imagenDataUrl;
+                data.imagenDataUrl = await readFileAsDataURL(fileInput.files[0]);
+            } else if (desembolso && desembolso.imagenDataUrl) {
+                data.imagenDataUrl = desembolso.imagenDataUrl;
             }
 
             if (data.id) {
@@ -260,7 +260,7 @@ async function showDesembolsoForm(desembolso = null) {
             await loadDesembolsosTable();
         } catch (error) {
             console.error("Error al guardar desembolso:", error);
-            alert("Error al guardar el desembolso.");
+            alert("Error al guardar el desembolso: " + error.message);
         }
     });
 }

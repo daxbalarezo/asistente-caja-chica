@@ -90,8 +90,8 @@ async function loadRendicionesTable() {
             r.descripcion || '',
             r.documento && r.documento.tipo ? `${r.documento.tipo.toUpperCase()} ${r.documento.numero}` : '',
             formatCurrency(r.monto),
-            (r.imagen_data_url || r.imagenDataUrl || r.imagen)
-                ? `<button class="btn btn-secondary btn-sm download-btn" data-url="${r.imagen_data_url || r.imagenDataUrl || r.imagen}" data-id="${r.id}">📥 Descargar</button>` 
+            r.imagenDataUrl
+                ? `<button class="btn btn-secondary btn-sm download-btn" data-url="${r.imagenDataUrl}" data-id="${r.id}">📥 Descargar</button>` 
                 : 'No hay',
             `<div class="actions">
                 <button class="btn btn-secondary btn-sm edit-btn" data-id="${r.id}">✏️</button>
@@ -235,7 +235,7 @@ async function showRendicionForm(rendicion = null) {
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label for="imagen">Comprobante (Opcional)</label>
                     <input type="file" id="imagen" name="imagen" accept="image/*,application/pdf">
-                    ${rendicion?.imagen_data_url || rendicion?.imagenDataUrl ? '<p style="color: green;">✅ Ya hay un comprobante cargado</p>' : ''}
+                    ${rendicion?.imagenDataUrl ? '<p style="color: green;">✅ Ya hay un comprobante cargado</p>' : ''}
                 </div>
             </div>
             <div class="form-actions">
@@ -307,9 +307,9 @@ async function showRendicionForm(rendicion = null) {
 
         try {
             if (fileInput.files.length > 0) {
-                data.imagen_data_url = await readFileAsDataURL(fileInput.files[0]);
-            } else if (rendicion && (rendicion.imagen_data_url || rendicion.imagenDataUrl)) {
-                data.imagen_data_url = rendicion.imagen_data_url || rendicion.imagenDataUrl;
+                data.imagenDataUrl = await readFileAsDataURL(fileInput.files[0]);
+            } else if (rendicion && rendicion.imagenDataUrl) {
+                data.imagenDataUrl = rendicion.imagenDataUrl;
             }
 
             if (data.id) {
