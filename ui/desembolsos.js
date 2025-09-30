@@ -60,9 +60,10 @@ async function loadDesembolsosTable() {
     listContainer.innerHTML = 'Cargando...';
 
     try {
+        // 🔥 CONSULTA OPTIMIZADA - SIN IMAGENES EN LISTA GENERAL
         let query = db.from(TABLE_NAME).select(`
-            *,
-            empresas ( nombre )
+            id, fecha, numero_requerimiento, responsable, descripcion, monto, moneda, medioPago,
+            empresas!inner(nombre)
         `).order('fecha', { ascending: false });
 
         const empresaFilter = document.getElementById('empresa-filter');
@@ -81,6 +82,13 @@ async function loadDesembolsosTable() {
             return;
         }
 
+        // 🔥 CONSULTA SEPARADA para verificar qué desembolsos tienen imágenes
+        const { data: desembolsosConImagen } = await db.from(TABLE_NAME)
+            .select('id')
+            .not('imagenDataUrl', 'is', null);
+
+        const idsConImagen = new Set(desembolsosConImagen?.map(d => d.id) || []);
+
         const headers = ['Fecha', 'Empresa', 'N° Req.', 'Responsable', 'Monto', 'Comprobante', 'Acciones'];
         const dataRows = desembolsos.map(d => [
             formatDateWithTimezone(d.fecha),
@@ -88,9 +96,8 @@ async function loadDesembolsosTable() {
             d.numero_requerimiento || '',
             d.responsable,
             formatCurrency(d.monto, d.moneda),
-            d.imagenDataUrl
-                ? `<button class="btn btn-secondary btn-sm download-btn" data-url="${d.imagenDataUrl}" data-id="${d.id}">📥 Descargar</button>` 
-                : 'No hay',
+            // 🔥 Mostrar botón basado en la consulta separada
+            idsConImagen.has(d.id) ? `<button class="btn btn-secondary btn-sm download-btn" data-id="${d.id}">📥 Descargar</button>` : 'No hay',
             `<div class="actions">
                 <button class="btn btn-secondary btn-sm edit-btn" data-id="${d.id}">✏️</button>
                 <button class="btn btn-danger btn-sm delete-btn" data-id="${d.id}">🗑️</button>
@@ -99,11 +106,39 @@ async function loadDesembolsosTable() {
 
         listContainer.innerHTML = createTable(headers, dataRows);
 
+        // 🔥 CARGAR IMAGEN SOLO AL DESCARGAR
         listContainer.querySelectorAll('.download-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const url = e.currentTarget.dataset.url;
+            btn.addEventListener('click', async (e) => {
                 const id = e.currentTarget.dataset.id;
-                downloadImage(url, id);
+                const button = e.currentTarget;
+                
+                // Mostrar "Cargando..."
+                button.textContent = '⏳ Cargando...';
+                button.disabled = true;
+                
+                try {
+                    // Cargar solo esta imagen específica
+                    const { data: desembolso, error } = await db.from(TABLE_NAME)
+                        .select('imagenDataUrl')
+                        .eq('id', id)
+                        .single();
+                    
+                    if (error) throw error;
+                    
+                    const url = desembolso?.imagenDataUrl;
+                    if (url) {
+                        downloadImage(url, id);
+                    } else {
+                        alert('No hay comprobante para descargar');
+                    }
+                } catch (error) {
+                    console.error('Error al cargar comprobante:', error);
+                    alert('Error al cargar el comprobante');
+                } finally {
+                    // Restaurar botón
+                    button.textContent = '📥 Descargar';
+                    button.disabled = false;
+                }
             });
         });
 
