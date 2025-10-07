@@ -54,6 +54,8 @@ main {
     justify-content: space-between;
     align-items: center;
     box-shadow: var(--box-shadow);
+    position: relative;
+    z-index: 100;
 }
 .app-header h1 {
     margin: 0;
@@ -201,9 +203,6 @@ button:hover, .btn:hover {
 }
 
 /* --- Tablas --- */
-table th, table td {
-    text-transform: uppercase;
-}
 .table-container {
     overflow-x: auto;
 }
@@ -223,6 +222,9 @@ thead {
 td .actions {
     display: flex;
     gap: 0.5rem;
+}
+table th, table td {
+    text-transform: uppercase;
 }
 
 /* --- Filtros --- */
@@ -394,46 +396,49 @@ td .actions {
         text-align: revert !important;
     }
     thead {
-        display: table-header-group !important; /* Aseguramos que los encabezados se muestren */
+        display: table-header-group !important;
     }
     tr {
-        page-break-inside: avoid; /* Evitar que una fila se corte entre dos páginas */
+        page-break-inside: avoid;
     }
     th, td {
-        border: 1px solid #ccc !important; /* Añadimos bordes para un look limpio */
+        border: 1px solid #ccc !important;
         padding: 0.5rem !important;
     }
     td::before {
-        display: none !important; /* Ocultamos las etiquetas de la vista móvil */
+        display: none !important;
     }
-   
 }
 
+/* =============================================== */
 /* --- ESTILOS PARA MÓVILES (RESPONSIVE DESIGN) --- */
-@media (max-width: 768px) {
+/* =============================================== */
+
+.menu-toggle-btn {
+    display: none; /* Oculto por defecto en escritorio */
+    background: none;
+    border: none;
+    font-size: 2.5rem;
+    cursor: pointer;
+    color: var(--text-color);
+    z-index: 1001;
+    padding: 0;
+    line-height: 1;
+}
+
+@media (max-width: 820px) {
     
     main {
         padding: 1rem;
     }
 
-    /* --- Cabecera Móvil --- */
     .app-header {
         flex-wrap: wrap;
-        padding: 1rem;
-    }
-
-    .app-header h1 {
-        font-size: 1.2rem;
     }
     
-    #mobile-menu-btn {
-        display: block;
-        background: none;
-        border: none;
-        font-size: 2rem;
-        cursor: pointer;
-        color: var(--text-color);
-        order: 3; /* Mueve el botón de ajustes al final */
+    #menu-toggle.menu-toggle-btn { /* Selector corregido */
+        display: block; /* Se muestra en móvil */
+        order: 3;
     }
 
     .settings-menu {
@@ -443,22 +448,27 @@ td .actions {
     .app-header nav {
         display: none; /* Oculta la navegación por defecto */
         width: 100%;
-        order: 4; /* Se mostrará al final */
+        order: 4;
         flex-direction: column;
         margin-top: 1rem;
+        background-color: var(--light-color);
+        border-radius: var(--border-radius);
     }
     
-    .app-header nav.active {
-        display: flex; /* Muestra el menú cuando JS añada la clase .active */
+    .app-header nav.is-active {
+        display: flex; /* Muestra el menú cuando JS añada la clase .is-active */
     }
 
     .app-header nav a {
         padding: 1rem;
         text-align: center;
         border-bottom: 1px solid var(--border-color);
+        border-radius: 0;
+    }
+    .app-header nav a:last-child {
+        border-bottom: none;
     }
 
-    /* --- Layout General Móvil --- */
     .page-header, .filters {
         flex-direction: column;
         align-items: stretch;
@@ -469,13 +479,12 @@ td .actions {
         grid-template-columns: 1fr;
     }
 
-    /* --- Tablas Responsivas (Transformación a Tarjetas) --- */
     table {
         border: 0;
     }
     
     table thead {
-        display: none; /* Ocultamos los encabezados de la tabla */
+        display: none;
     }
     
     table tr {
@@ -488,10 +497,10 @@ td .actions {
     
     table td {
         display: block;
-        text-align: right; /* Alineamos el valor a la derecha */
+        text-align: right;
         border-bottom: 1px solid var(--border-color);
         position: relative;
-        padding-left: 50%; /* Espacio para la etiqueta */
+        padding-left: 50%;
     }
     
     table td:last-child {
@@ -499,7 +508,7 @@ td .actions {
     }
     
     table td::before {
-        content: attr(data-label); /* Usamos el atributo data-label como etiqueta */
+        content: attr(data-label);
         position: absolute;
         left: 0.5rem;
         width: 45%;
@@ -508,7 +517,6 @@ td .actions {
         text-align: left;
     }
 
-    /* --- Formularios y Modales --- */
     .modal-content {
         width: 95%;
         padding: 1.5rem;
@@ -521,9 +529,4 @@ td .actions {
     .form-actions button {
         width: 100%;
     }
-}
-
-/* Ocultar botón de menú en escritorio */
-#mobile-menu-btn {
-    display: none;
 }

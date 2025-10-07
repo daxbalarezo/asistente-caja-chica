@@ -1,4 +1,3 @@
-// --- app.js (Versión Final con Router Corregido) ---
 import { db } from './db.js';
 import { renderDashboard } from './ui/cuadre.js';
 import { renderEmpresas } from './ui/empresas.js';
@@ -31,17 +30,18 @@ async function router() {
         return;
     }
 
-    // --- LÓGICA DEL ROUTER MEJORADA ---
     let path = window.location.hash.slice(1);
     if (path.startsWith('/')) {
         path = path.slice(1);
     }
     
+    // Proteger rutas: si no hay usuario, forzar a la página de login
     if (!currentUser && path !== 'auth') {
         window.location.hash = 'auth';
         return;
     }
     
+    // Redirigir si el usuario ya está logueado y va a la página de login
     if (currentUser && path === 'auth') {
         window.location.hash = '/';
         return;
@@ -57,9 +57,9 @@ async function router() {
     } catch (error) {
         console.error(`Error al renderizar la vista para ${path}:`, error);
         appRoot.innerHTML = `
-            <div class="error-container">
-                <h2>Error al cargar la página</h2>
-                <p>Por favor, recarga la página e intenta nuevamente.</p>
+            <div class="error-container card" style="text-align:center;">
+                <h2>Error al Cargar la Página</h2>
+                <p>Hubo un problema al mostrar esta sección. Por favor, recarga la página.</p>
                 <button onclick="window.location.reload()" class="btn btn-primary">Recargar</button>
             </div>
         `;
@@ -69,15 +69,17 @@ async function router() {
 function updateUI(user) {
     const nav = document.querySelector('header nav');
     const settings = document.querySelector('.settings-menu');
+    const menuToggle = document.getElementById('menu-toggle');
     
-    if (!nav || !settings) {
-        console.warn('Elementos de navegación no encontrados');
+    if (!nav || !settings || !menuToggle) {
+        console.warn('Elementos de la cabecera no encontrados para actualizar UI.');
         return;
     }
 
     if (user) {
-        nav.style.display = '';
+        nav.style.display = ''; // Permite que el CSS controle la visibilidad
         settings.style.display = 'flex';
+        menuToggle.style.display = ''; // Permite que el CSS controle la visibilidad
 
         let logoutBtn = document.getElementById('logout-btn');
         if (!logoutBtn) {
@@ -89,36 +91,37 @@ function updateUI(user) {
         }
         logoutBtn.onclick = handleLogout;
 
-        let currentPath = window.location.hash.slice(1);
-        if (currentPath.startsWith('/')) {
-            currentPath = currentPath.slice(1);
-        }
-        
-        document.querySelectorAll('nav a').forEach(a => {
-            let linkPath = a.getAttribute('href').slice(1);
-            if (linkPath.startsWith('/')) {
-                linkPath = linkPath.slice(1);
-            }
-            if (linkPath === '' && (currentPath === '' || currentPath === '/')) {
-                 a.classList.add('active');
-            } else if (linkPath !== '' && linkPath === currentPath) {
-                 a.classList.add('active');
-            } else {
-                 a.classList.remove('active');
-            }
-        });
+        updateActiveLink();
 
     } else {
         nav.style.display = 'none';
         settings.style.display = 'none';
+        menuToggle.style.display = 'none';
         const logoutBtn = document.getElementById('logout-btn');
         if (logoutBtn) logoutBtn.remove();
     }
 }
 
+function updateActiveLink() {
+    let currentPath = window.location.hash.slice(1);
+    if (currentPath.startsWith('/')) currentPath = currentPath.slice(1);
+    
+    // Normaliza la ruta base a '/' para la comparación
+    if (currentPath === '') currentPath = '/';
+
+    document.querySelectorAll('nav a').forEach(a => {
+        const linkPath = a.getAttribute('href').slice(1) || '/';
+        if (linkPath === currentPath) {
+             a.classList.add('active');
+        } else {
+             a.classList.remove('active');
+        }
+    });
+}
+
 window.addEventListener('hashchange', router);
 
-// --- INICIO: Lógica para el Menú Hamburguesa ---
+// --- Lógica para el Menú Hamburguesa ---
 const menuToggle = document.getElementById('menu-toggle');
 const nav = document.querySelector('header nav');
 
@@ -137,19 +140,18 @@ if (menuToggle && nav) {
         });
     });
 }
-// --- FIN: Lógica para el Menú Hamburguesa ---
 
-// --- INICIO: Lógica para el Modo Oscuro ---
+// --- Lógica para el Modo Oscuro ---
 const themeToggleBtn = document.getElementById('theme-toggle');
 
-// Función para aplicar el tema guardado al cargar la página
 function applyInitialTheme() {
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
-    themeToggleBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+    if(themeToggleBtn) {
+        themeToggleBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+    }
 }
 
-// Event listener para el botón que cambia el tema
 if (themeToggleBtn) {
     themeToggleBtn.addEventListener('click', () => {
         let currentTheme = document.documentElement.getAttribute('data-theme');
@@ -159,13 +161,10 @@ if (themeToggleBtn) {
         themeToggleBtn.textContent = newTheme === 'dark' ? '☀️' : '🌙';
         localStorage.setItem('theme', newTheme);
     });
-
-    // Llamamos a la función al inicio para establecer el tema correcto
-    applyInitialTheme();
 }
-// --- FIN: Lógica para el Modo Oscuro ---
 
-// Inicializar el router cuando se carga la página
+// Inicializar el tema y el router cuando se carga la página
 document.addEventListener('DOMContentLoaded', () => {
+    applyInitialTheme();
     router();
 });
