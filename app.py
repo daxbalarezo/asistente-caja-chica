@@ -13,7 +13,7 @@ ASESORES = {
     "cecilia_chuman": {"nombre": "Cecilia Chuman", "celular": "939 074 942"},
     "ingrid_ayasta": {"nombre": "Ingrid Ayasta", "celular": "948 629 272"},
     "maribel_orrego": {"nombre": "Maribel Orrego", "celular": "928 823 455"},
-    "Ganesha_Solutions": {"nombre": "Ganesha Solutions", "celular": "922 824 225"}
+    "ganesha_solutions": {"nombre": "Ganesha Solutions", "celular": "922 824 225"}
             }
 
 def _limpiar_unidad(texto_raw, proyecto):
